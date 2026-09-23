@@ -93,8 +93,8 @@ export async function login(
  * lalu arahkan pengguna ke halaman masuk.
  */
 export async function logout(
-  state: AuthFormState,
-  formData: FormData
+  _state: AuthFormState,
+  _formData: FormData
 ): Promise<AuthFormState> {
   await deleteSession();
   redirect("/login");
