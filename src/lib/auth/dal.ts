@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
-import { findAccountById, toUserDTO } from "@/lib/auth/account-store";
+import { findAccountById } from "@/lib/auth/account-store";
 import type { UserDTO } from "@/lib/auth/types";
 
 /**
@@ -23,8 +23,7 @@ export const getCurrentUser = cache(async (): Promise<UserDTO | null> => {
   const session = await getSession();
   if (!session?.userId) return null;
 
-  const user = await findAccountById(session.userId);
-  return user ? toUserDTO(user) : null;
+  return findAccountById(session.userId);
 });
 
 /**
