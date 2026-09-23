@@ -1,13 +1,19 @@
 // Milik Orang 4 — mock operasi tulis SEMENTARA (SRS FR-024).
-// Diganti operasi asli Orang 2 (src/lib/transactions) saat sudah tersedia.
-// Bentuk input/output disamakan dengan kontrak §8.1: tanpa user_id,
-// return { ok, error? }. Tidak menyentuh database.
+// Diganti operasi asli Orang 2 saat tersedia. Tandatangan disamakan dengan
+// kontrak kanonis (src/types) agar swap-nya trivial, contoh:
+//   import { createTransaction } from "@/lib/transactions";
+//   const result = await createTransaction(toCreateInput(formData));
+// Tanpa user_id (pemilik dari session server). Tidak menyentuh database.
 
 import type {
-  Transaction,
-  TransactionFormData,
-} from "./types";
-import { todayISODate } from "./validation";
+  CreateTransactionInput,
+  TransactionItem,
+  UpdateTransactionInput,
+} from "@/types";
+
+export type MockResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string };
 
 const LATENCY_MS = 400;
 
@@ -15,58 +21,75 @@ function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function newId(): string {
+function newId(prefix: string): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
+    return `${prefix}-${crypto.randomUUID()}`;
   }
-  return `mock-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
+  return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
 }
 
-export function seedMockTransactions(): Transaction[] {
+const now = new Date();
+
+export function seedMockTransactions(): TransactionItem[] {
   return [
     {
       id: "mock-seed-1",
-      type: "pemasukan",
+      userId: "mock-user",
+      type: "INCOME",
       amount: 1500000,
-      date: todayISODate(),
       category: "Lainnya",
-      note: "Uang saku bulan ini",
+      description: "Uang saku bulan ini",
+      date: now,
+      createdAt: now,
+      updatedAt: now,
     },
     {
       id: "mock-seed-2",
-      type: "pengeluaran",
+      userId: "mock-user",
+      type: "EXPENSE",
       amount: 50000,
-      date: todayISODate(),
       category: "Makanan",
-      note: "Makan siang",
+      description: "Makan siang",
+      date: now,
+      createdAt: now,
+      updatedAt: now,
     },
   ];
 }
 
 export async function mockCreateTransaction(
-  list: Transaction[],
-  data: TransactionFormData,
-): Promise<{ ok: true; transaction: Transaction } | { ok: false; error: string }> {
+  input: CreateTransactionInput,
+): Promise<MockResult<TransactionItem>> {
   await wait(LATENCY_MS);
-  const transaction: Transaction = { id: newId(), ...data };
-  void list;
-  return { ok: true, transaction };
+  const at = new Date();
+  return {
+    ok: true,
+    data: {
+      id: newId("mock"),
+      userId: "mock-user",
+      type: input.type,
+      amount: input.amount,
+      category: input.category,
+      description: input.description ?? null,
+      date: input.date instanceof Date ? input.date : new Date(input.date ?? at),
+      createdAt: at,
+      updatedAt: at,
+    },
+  };
 }
 
 export async function mockUpdateTransaction(
-  id: string,
-  data: TransactionFormData,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+  input: UpdateTransactionInput,
+): Promise<MockResult<null>> {
   await wait(LATENCY_MS);
-  void id;
-  void data;
-  return { ok: true };
+  void input;
+  return { ok: true, data: null };
 }
 
 export async function mockDeleteTransaction(
   id: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<MockResult<null>> {
   await wait(LATENCY_MS);
   void id;
-  return { ok: true };
+  return { ok: true, data: null };
 }
