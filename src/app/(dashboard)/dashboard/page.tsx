@@ -1,4 +1,5 @@
 import type { TransactionItem } from '@/types';
+import { verifySession } from '@/lib/auth/dal';
 import { calculateSummary } from '@/components/dashboard/calculateSummary';
 import { EmptyState } from '@/components/dashboard/EmptyState';
 import { SummaryCards } from '@/components/dashboard/SummaryCards';
@@ -29,7 +30,10 @@ const previewTransactions: TransactionItem[] = [
   },
 ];
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  // Proteksi FR-006 (dulu di placeholder app/dashboard yang dihapus karena
+  // konflik route; permukaan kanonis dashboard milik Orang 3).
+  await verifySession();
   const summary = calculateSummary(previewTransactions);
 
   return (

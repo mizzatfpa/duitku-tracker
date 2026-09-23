@@ -30,8 +30,8 @@ export async function createTransactionAction(input: CreateTransactionInput) {
   try {
     const userId = await getAuthUser();
     return await TransactionService.createTransaction(userId, input);
-  } catch (error: any) {
-    return { success: false, errors: [error.message] };
+  } catch (error) {
+    return { success: false, errors: [error instanceof Error ? error.message : 'Terjadi kesalahan.'] };
   }
 }
 
@@ -43,8 +43,8 @@ export async function getTransactionsAction() {
   try {
     const userId = await getAuthUser();
     return await TransactionService.getTransactionsByUserId(userId);
-  } catch (error: any) {
-    return { success: false, errors: [error.message] };
+  } catch (error) {
+    return { success: false, errors: [error instanceof Error ? error.message : 'Terjadi kesalahan.'] };
   }
 }
 
@@ -56,8 +56,8 @@ export async function updateTransactionAction(input: UpdateTransactionInput) {
   try {
     const userId = await getAuthUser();
     return await TransactionService.updateTransaction(userId, input);
-  } catch (error: any) {
-    return { success: false, errors: [error.message] };
+  } catch (error) {
+    return { success: false, errors: [error instanceof Error ? error.message : 'Terjadi kesalahan.'] };
   }
 }
 
@@ -69,8 +69,8 @@ export async function deleteTransactionAction(transactionId: string) {
   try {
     const userId = await getAuthUser();
     return await TransactionService.deleteTransaction(userId, transactionId);
-  } catch (error: any) {
-    return { success: false, errors: [error.message] };
+  } catch (error) {
+    return { success: false, errors: [error instanceof Error ? error.message : 'Terjadi kesalahan.'] };
   }
 }
 
@@ -82,7 +82,7 @@ export async function getFinancialSummaryAction() {
   try {
     const userId = await getAuthUser();
     return await TransactionService.getFinancialSummary(userId);
-  } catch (error: any) {
-    return { success: false, errors: [error.message] };
+  } catch (error) {
+    return { success: false, errors: [error instanceof Error ? error.message : 'Terjadi kesalahan.'] };
   }
 }
