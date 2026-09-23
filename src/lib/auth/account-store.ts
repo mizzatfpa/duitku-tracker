@@ -1,21 +1,20 @@
 import "server-only";
-import { prisma } from "@/lib/db/prisma";
+import { findUserByEmail, findUserById, createUser } from "@/lib/users";
 import type { User, UserDTO } from "@/lib/auth/types";
 import { authLog, authWarn, authError } from "@/lib/auth/logger";
 
 /**
- * Repositori akun autentikasi — membaca/menulis tabel PostgreSQL `users`
- * (skema prisma/schema.prisma) lewat klien `src/lib/db/prisma`.
- * Penyimpanan akun dipusatkan di sini dengan kontrak tetap:
+ * Repositori akun autentikasi — lapisan tipis di atas modul data akun
+ * `src/lib/users` (milik Orang 2). Autentikasi memakai operasi penyimpanan
+ * tersebut sesuai serah-terima kontrak, bukan Prisma langsung:
  *
- *   createAccount({ name, email, passwordHash }) → Promise<User>
- *   findAccountByEmail(email)                    → Promise<User | null>
- *   findAccountById(id)                          → Promise<User | null>
+ *   createAccount({ name, email, passwordHash }) → Promise<NewAccount>
+ *   findAccountByEmail(email)                    → Promise<User | null>   (termuat hash, untuk login)
+ *   findAccountById(id)                          → Promise<UserDTO | null> (tanpa hash, aman ke browser)
  *
- * Kolom `password` pada tabel berisi hash bcrypt (bukan teks asli). Duplikat
- * email ditolak oleh unique constraint (error Prisma P2002) lalu diubah
- * menjadi AccountAlreadyExistsError agar Server Action menampilkan pesan
- * "email sudah terdaftar".
+ * Duplikat email sudah dideteksi di modul Orang 2 (error P2002 diubah menjadi
+ * pesan "Email sudah terdaftar."); di sini diterjemahkan kembali menjadi
+ * AccountAlreadyExistsError agar Server Action memberi pesan yang sama.
  */
 
 export class AccountAlreadyExistsError extends Error {
@@ -28,80 +27,63 @@ export class AccountAlreadyExistsError extends Error {
   }
 }
 
-/** Kolom yang dibutuhkan autentikasi; hash kata sandi tidak pernah keluar server. */
-const ACCOUNT_SELECT = {
-  id: true,
-  email: true,
-  password: true,
-  name: true,
-  createdAt: true,
-  updatedAt: true,
-} as const;
+/** Pesan konsisten dari modul Orang 2 saat email sudah terdaftar. */
+const DUPLICATE_EMAIL = "Email sudah terdaftar.";
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-function isUniqueViolation(error: unknown): boolean {
-  if (typeof error !== "object" || error === null) return false;
-  const candidate = error as { name?: unknown; code?: unknown };
-  return (
-    candidate.name === "PrismaClientKnownRequestError" &&
-    candidate.code === "P2002"
-  );
-}
-
 export async function findAccountByEmail(email: string): Promise<User | null> {
   try {
-    return await prisma.user.findUnique({
-      where: { email: normalizeEmail(email) },
-      select: ACCOUNT_SELECT,
-    });
+    return await findUserByEmail(normalizeEmail(email));
   } catch (error) {
     authError("account-store", "findAccountByEmail gagal", error);
     throw error;
   }
 }
 
-export async function findAccountById(id: string): Promise<User | null> {
+export async function findAccountById(id: string): Promise<UserDTO | null> {
   try {
-    return await prisma.user.findUnique({
-      where: { id },
-      select: ACCOUNT_SELECT,
-    });
+    return await findUserById(id);
   } catch (error) {
     authError("account-store", "findAccountById gagal", error, { userId: id });
     throw error;
   }
 }
 
+export type NewAccount = Pick<User, "id" | "email" | "name" | "createdAt">;
+
+/** Bentuk hasil createUser dari modul Orang 2 yang dipakai repo akun. */
+type CreateUserResult =
+  | { success: true; user: NewAccount }
+  | { success: false; error: string };
+
 export async function createAccount(input: {
   name: string;
   email: string;
   passwordHash: string;
-}): Promise<User> {
+}): Promise<NewAccount> {
   const email = normalizeEmail(input.email);
 
-  try {
-    const user = await prisma.user.create({
-      data: { email, password: input.passwordHash, name: input.name },
-      select: ACCOUNT_SELECT,
-    });
-    authLog("account-store", "akun dibuat", { userId: user.id, email });
-    return user;
-  } catch (error) {
-    if (isUniqueViolation(error)) {
-      authWarn("account-store", "pendaftaran ditolak: email sudah terdaftar", {
-        email,
-      });
-      throw new AccountAlreadyExistsError(email);
-    }
-    authError("account-store", "createAccount gagal", error);
-    throw error;
-  }
-}
+  const result = (await createUser({
+    email,
+    passwordHash: input.passwordHash,
+    name: input.name,
+  })) as unknown as CreateUserResult;
 
-/** DTO tanpa hash kata sandi; hanya boleh dikirim ke browser. */
-export function toUserDTO(user: User): UserDTO {
-  return { id: user.id, name: user.name, email: user.email };
+  if (result.success) {
+    authLog("account-store", "akun dibuat", { userId: result.user.id, email });
+    return result.user;
+  }
+
+  if (result.error === DUPLICATE_EMAIL) {
+    authWarn("account-store", "pendaftaran ditolak: email sudah terdaftar", {
+      email,
+    });
+    throw new AccountAlreadyExistsError(email);
+  }
+
+  authError("account-store", "createAccount gagal", new Error(result.error));
+  throw new Error(result.error);
 }
