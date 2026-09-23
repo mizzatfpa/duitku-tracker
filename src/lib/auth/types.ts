@@ -1,9 +1,10 @@
 export interface User {
   id: string
-  name: string
   email: string
-  passwordHash: string
-  createdAt: string
+  password: string
+  name: string | null
+  createdAt: Date
+  updatedAt: Date
 }
 
 export type UserDTO = Pick<User, "id" | "name" | "email">

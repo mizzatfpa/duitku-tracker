@@ -1,64 +1,79 @@
 import "server-only";
-import { randomUUID } from "crypto";
-import { mkdir, readFile, writeFile } from "fs/promises";
-import path from "path";
+import { prisma } from "@/lib/db/prisma";
 import type { User, UserDTO } from "@/lib/auth/types";
+import { authLog, authWarn, authError } from "@/lib/auth/logger";
 
 /**
- * PLACEHOLDER repositori akun — boilerplate autentikasi.
- *
- * Skema database PostgreSQL (tabel `users`) belum dibuat. Sesuai SRS Bagian 8,
- * lapisan data akun menjadi milik Orang 2 (`src/lib/users/**`, `src/lib/db/**`).
- * Modul ini hanya menyediakan kontrak serah-terima autentikasi agar alur
- * daftar/masuk dapat diuji; ganti isi implementasinya dengan operasi penyimpanan
- * akun milik Orang 2 tanpa mengubah bentuk kontrak di bawah ini:
+ * Repositori akun autentikasi — membaca/menulis tabel PostgreSQL `users`
+ * (skema prisma/schema.prisma milik Orang 2) lewat klien `src/lib/db/prisma`.
+ * Modul ini (di bawah src/lib/auth/**) menyesuaikan alur daftar/masuk dengan
+ * skema database untuk SRS-FR-001/002/003:
  *
  *   createAccount({ name, email, passwordHash }) → Promise<User>
  *   findAccountByEmail(email)                    → Promise<User | null>
  *   findAccountById(id)                          → Promise<User | null>
+ *
+ * Kolom `password` pada tabel berisi hash bcrypt (bukan teks asli). Duplikat
+ * email ditolak oleh unique constraint (kode error Prisma P2002) dan
+ * dikembalikan sebagai AccountAlreadyExistsError agar Server Action dapat
+ * memberi pesan SRS-FR-002.
  */
-const DATA_DIR = path.join(process.cwd(), "data");
-const USERS_FILE = path.join(DATA_DIR, "users.json");
 
 export class AccountAlreadyExistsError extends Error {
+  readonly email: string;
+
   constructor(email: string) {
     super(`Account with email ${email} already exists.`);
     this.name = "AccountAlreadyExistsError";
+    this.email = email;
   }
 }
 
-async function readUsers(): Promise<User[]> {
-  try {
-    const raw = await readFile(USERS_FILE, "utf8");
-    const data = JSON.parse(raw) as unknown;
-    return Array.isArray(data) ? (data as User[]) : [];
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return [];
-    }
-    console.error("Gagal membaca penyimpanan akun:", error);
-    return [];
-  }
-}
-
-async function writeUsers(users: User[]): Promise<void> {
-  await mkdir(DATA_DIR, { recursive: true });
-  await writeFile(USERS_FILE, JSON.stringify(users, null, 2), "utf8");
-}
+/** Kolom yang dibutuhkan autentikasi; hash kata sandi tidak pernah keluar server. */
+const ACCOUNT_SELECT = {
+  id: true,
+  email: true,
+  password: true,
+  name: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+function isUniqueViolation(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const candidate = error as { name?: unknown; code?: unknown };
+  return (
+    candidate.name === "PrismaClientKnownRequestError" &&
+    candidate.code === "P2002"
+  );
+}
+
 export async function findAccountByEmail(email: string): Promise<User | null> {
-  const users = await readUsers();
-  const normalized = normalizeEmail(email);
-  return users.find((u) => u.email === normalized) ?? null;
+  try {
+    return await prisma.user.findUnique({
+      where: { email: normalizeEmail(email) },
+      select: ACCOUNT_SELECT,
+    });
+  } catch (error) {
+    authError("account-store", "findAccountByEmail gagal", error);
+    throw error;
+  }
 }
 
 export async function findAccountById(id: string): Promise<User | null> {
-  const users = await readUsers();
-  return users.find((u) => u.id === id) ?? null;
+  try {
+    return await prisma.user.findUnique({
+      where: { id },
+      select: ACCOUNT_SELECT,
+    });
+  } catch (error) {
+    authError("account-store", "findAccountById gagal", error, { userId: id });
+    throw error;
+  }
 }
 
 export async function createAccount(input: {
@@ -66,23 +81,25 @@ export async function createAccount(input: {
   email: string;
   passwordHash: string;
 }): Promise<User> {
-  const users = await readUsers();
   const email = normalizeEmail(input.email);
 
-  if (users.some((u) => u.email === email)) {
-    throw new AccountAlreadyExistsError(email);
+  try {
+    const user = await prisma.user.create({
+      data: { email, password: input.passwordHash, name: input.name },
+      select: ACCOUNT_SELECT,
+    });
+    authLog("account-store", "akun dibuat", { userId: user.id, email });
+    return user;
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      authWarn("account-store", "pendaftaran ditolak: email sudah terdaftar", {
+        email,
+      });
+      throw new AccountAlreadyExistsError(email);
+    }
+    authError("account-store", "createAccount gagal", error);
+    throw error;
   }
-
-  const user: User = {
-    id: randomUUID(),
-    name: input.name,
-    email,
-    passwordHash: input.passwordHash,
-    createdAt: new Date().toISOString(),
-  };
-
-  await writeUsers([...users, user]);
-  return user;
 }
 
 /** DTO tanpa hash kata sandi; hanya boleh dikirim ke browser. */

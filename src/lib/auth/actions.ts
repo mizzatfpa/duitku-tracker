@@ -9,11 +9,16 @@ import {
   AccountAlreadyExistsError,
 } from "@/lib/auth/account-store";
 import { createSession, deleteSession } from "@/lib/auth/session";
-import type { AuthFormState } from "@/lib/auth/types";
+import type { AuthFormState, User } from "@/lib/auth/types";
+import { authLog, authWarn, authError } from "@/lib/auth/logger";
+
+const DB_ERROR_MESSAGE =
+  "Terjadi kesalahan saat menghubungi database. Pastikan DATABASE_URL di .env sudah diisi, lalu coba lagi.";
 
 /**
- * Server Action daftar akun. Validasi backend memakai skema yang sama
- * dengan validasi front end (lihat src/lib/auth/validations.ts).
+ * Server Action daftar akun (SRS-FR-001/002). Validasi backend memakai
+ * skema yang sama dengan validasi front end (lihat src/lib/auth/validations.ts).
+ * Email duplikat ditolak lewat pengecekan awal maupun constraint unik DB (P2002).
  */
 export async function signup(
   state: AuthFormState,
@@ -27,13 +32,24 @@ export async function signup(
   });
 
   if (!result.success) {
+    authWarn("actions", "signup: validasi gagal", {
+      fields: Object.keys(result.error.flatten().fieldErrors),
+    });
     return { errors: result.error.flatten().fieldErrors };
   }
 
   const { name, email, password } = result.data;
 
-  const existing = await findAccountByEmail(email);
+  let existing: User | null = null;
+  try {
+    existing = await findAccountByEmail(email);
+  } catch (error) {
+    authError("actions", "signup: pengecekan email gagal (database)", error);
+    return { message: DB_ERROR_MESSAGE };
+  }
+
   if (existing) {
+    authWarn("actions", "signup ditolak: email sudah terdaftar", { email });
     return { errors: { email: ["Email sudah terdaftar."] } };
   }
 
@@ -44,20 +60,24 @@ export async function signup(
     user = await createAccount({ name, email, passwordHash });
   } catch (error) {
     if (error instanceof AccountAlreadyExistsError) {
+      authWarn("actions", "signup ditolak: email sudah terdaftar (race)", {
+        email,
+      });
       return { errors: { email: ["Email sudah terdaftar."] } };
     }
-    console.error("Gagal membuat akun:", error);
+    authError("actions", "signup: pembuatan akun gagal", error);
     return { message: "Terjadi kesalahan saat membuat akun. Coba lagi." };
   }
 
   await createSession(user.id);
+  authLog("actions", "signup berhasil", { userId: user.id, email });
   redirect("/dashboard");
 }
 
 /**
- * Server Action masuk. Validasi backend memakai skema yang sama
- * dengan validasi front end. Pesan error dikaburkan agar tidak
- * membocorkan akun mana yang terdaftar (SRS-FR-003).
+ * Server Action masuk (SRS-FR-003/004). Validasi backend memakai skema
+ * yang sama dengan validasi front end. Pesan error dikaburkan agar tidak
+ * membocorkan akun mana yang terdaftar.
  */
 export async function login(
   state: AuthFormState,
@@ -69,22 +89,35 @@ export async function login(
   });
 
   if (!result.success) {
+    authWarn("actions", "login: validasi gagal", {
+      fields: Object.keys(result.error.flatten().fieldErrors),
+    });
     return { errors: result.error.flatten().fieldErrors };
   }
 
   const { email, password } = result.data;
 
-  const user = await findAccountByEmail(email);
+  let user: User | null = null;
+  try {
+    user = await findAccountByEmail(email);
+  } catch (error) {
+    authError("actions", "login: pengecekan kredensial gagal (database)", error);
+    return { message: DB_ERROR_MESSAGE };
+  }
+
   if (!user) {
+    authWarn("actions", "login ditolak: kredensial salah", { email });
     return { message: "Email atau kata sandi salah." };
   }
 
-  const passwordValid = await verifyPassword(password, user.passwordHash);
+  const passwordValid = await verifyPassword(password, user.password);
   if (!passwordValid) {
+    authWarn("actions", "login ditolak: kredensial salah", { email });
     return { message: "Email atau kata sandi salah." };
   }
 
   await createSession(user.id);
+  authLog("actions", "login berhasil", { userId: user.id, email });
   redirect("/dashboard");
 }
 
@@ -97,5 +130,6 @@ export async function logout(
   _formData: FormData
 ): Promise<AuthFormState> {
   await deleteSession();
+  authLog("actions", "logout berhasil");
   redirect("/login");
 }

@@ -2,18 +2,23 @@ import "server-only";
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import type { SessionPayload } from "@/lib/auth/types";
+import { authLog } from "@/lib/auth/logger";
 
 /**
  * Session stateless (JWT HS256), ditandatangani SESSION_SECRET.
  * Empat langkah rekomendasi docs Next.js untuk stateless session
  * (authentication → session management → stateless sessions).
+ * Variabel dibaca dari SATU file `.env` (tidak ada env.dev/env.prod).
+ * Durasi session 1 jam (SRS-FR-004).
  */
 const COOKIE_NAME = "session";
 const SESSION_MAX_AGE_SECONDS = 60 * 60; // 1 jam
 
 const secretKey = process.env.SESSION_SECRET;
 if (!secretKey) {
-  throw new Error("SESSION_SECRET belum diatur. Salin .env.example ke .env.local dan isi nilainya.");
+  throw new Error(
+    "SESSION_SECRET belum diatur. Salin .env.example menjadi .env dan isi nilainya."
+  );
 }
 const encodedKey = new TextEncoder().encode(secretKey);
 
@@ -51,11 +56,19 @@ export async function createSession(userId: string): Promise<void> {
     path: "/",
     maxAge: SESSION_MAX_AGE_SECONDS,
   });
+
+  authLog("session", "session dibuat", { userId });
 }
 
 export async function deleteSession(): Promise<void> {
   const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value;
+  const session = token ? await decrypt(token) : null;
   cookieStore.delete(COOKIE_NAME);
+
+  if (session?.userId) {
+    authLog("session", "session dihapus", { userId: session.userId });
+  }
 }
 
 /** Perpanjang umur session setiap pengguna masih aktif. */
