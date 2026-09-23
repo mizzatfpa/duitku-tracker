@@ -1,7 +1,8 @@
 import "server-only";
 
 /**
- * Logging alur autentikasi yang jelas (SRS-FR-002/003, NFR).
+ * Log helpers alur autentikasi agar perilaku daftar/masuk/keluar mudah
+ * ditelusuri di log server.
  *
  * Aturan:
  *  - Konfigurasi hanya SATU file `.env` — tidak ada env.dev/env.prod.

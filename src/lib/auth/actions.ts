@@ -16,9 +16,9 @@ const DB_ERROR_MESSAGE =
   "Terjadi kesalahan saat menghubungi database. Pastikan DATABASE_URL di .env sudah diisi, lalu coba lagi.";
 
 /**
- * Server Action daftar akun (SRS-FR-001/002). Validasi backend memakai
- * skema yang sama dengan validasi front end (lihat src/lib/auth/validations.ts).
- * Email duplikat ditolak lewat pengecekan awal maupun constraint unik DB (P2002).
+ * Server Action daftar akun. Validasi backend memakai skema yang sama
+ * dengan validasi front end (lihat src/lib/auth/validations.ts). Email
+ * duplikat ditolak dua lapis: pengecekan awal lalu constraint unik DB (P2002).
  */
 export async function signup(
   state: AuthFormState,
@@ -75,9 +75,9 @@ export async function signup(
 }
 
 /**
- * Server Action masuk (SRS-FR-003/004). Validasi backend memakai skema
- * yang sama dengan validasi front end. Pesan error dikaburkan agar tidak
- * membocorkan akun mana yang terdaftar.
+ * Server Action masuk. Validasi backend memakai skema yang sama dengan
+ * validasi front end. Pesan error sengaja dikaburkan agar tidak
+ * membocorkan alamat email mana yang sudah terdaftar pada sistem.
  */
 export async function login(
   state: AuthFormState,
@@ -122,8 +122,8 @@ export async function login(
 }
 
 /**
- * Server Action keluar (SRS-FR-005): hapus cookie session
- * lalu arahkan pengguna ke halaman masuk.
+ * Server Action keluar — menghapus cookie session (deleteSession) lalu
+ * mengarahkan pengguna ke halaman masuk.
  */
 export async function logout(
   _state: AuthFormState,

@@ -5,18 +5,17 @@ import { authLog, authWarn, authError } from "@/lib/auth/logger";
 
 /**
  * Repositori akun autentikasi — membaca/menulis tabel PostgreSQL `users`
- * (skema prisma/schema.prisma milik Orang 2) lewat klien `src/lib/db/prisma`.
- * Modul ini (di bawah src/lib/auth/**) menyesuaikan alur daftar/masuk dengan
- * skema database untuk SRS-FR-001/002/003:
+ * (skema prisma/schema.prisma) lewat klien `src/lib/db/prisma`.
+ * Penyimpanan akun dipusatkan di sini dengan kontrak tetap:
  *
  *   createAccount({ name, email, passwordHash }) → Promise<User>
  *   findAccountByEmail(email)                    → Promise<User | null>
  *   findAccountById(id)                          → Promise<User | null>
  *
  * Kolom `password` pada tabel berisi hash bcrypt (bukan teks asli). Duplikat
- * email ditolak oleh unique constraint (kode error Prisma P2002) dan
- * dikembalikan sebagai AccountAlreadyExistsError agar Server Action dapat
- * memberi pesan SRS-FR-002.
+ * email ditolak oleh unique constraint (error Prisma P2002) lalu diubah
+ * menjadi AccountAlreadyExistsError agar Server Action menampilkan pesan
+ * "email sudah terdaftar".
  */
 
 export class AccountAlreadyExistsError extends Error {
