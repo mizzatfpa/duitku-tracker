@@ -1,45 +1,65 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { verifySession, getCurrentUser } from "@/lib/auth/dal";
-import { LogoutButton } from "@/lib/auth/logout-button";
+import type { TransactionItem } from "@/types";
+import { calculateSummary } from "@/components/dashboard/calculateSummary";
+import { EmptyState } from "@/components/dashboard/EmptyState";
+import { SummaryCards } from "@/components/dashboard/SummaryCards";
+import { TransactionHistory } from "@/components/dashboard/TransactionHistory";
 
 export const metadata: Metadata = {
   title: "Dashboard | Duitku Tracker",
 };
 
-/**
- * Halaman dashboard (placeholder di branch autentikasi). verifySession()
- * mengarahkan pengguna tanpa session ke /login, lalu getCurrentUser()
- * mengambil identitas pengguna masuk tanpa hash kata sandi. Isi dashboard
- * diisi oleh pemilik halaman; pertahankan kedua pemanggilan tersebut.
- */
+const previewTransactions: TransactionItem[] = [
+  {
+    id: "preview-income",
+    userId: "preview-user",
+    type: "INCOME",
+    amount: 2450000,
+    category: "Uang saku",
+    description: "Uang saku bulanan",
+    date: new Date("2026-09-01"),
+    createdAt: new Date("2026-09-01"),
+    updatedAt: new Date("2026-09-01"),
+  },
+  {
+    id: "preview-expense",
+    userId: "preview-user",
+    type: "EXPENSE",
+    amount: 850000,
+    category: "Kebutuhan kuliah",
+    description: "Buku dan transportasi",
+    date: new Date("2026-09-05"),
+    createdAt: new Date("2026-09-05"),
+    updatedAt: new Date("2026-09-05"),
+  },
+];
+
 export default async function DashboardPage() {
   await verifySession();
   const user = await getCurrentUser();
+  const summary = calculateSummary(previewTransactions);
 
   return (
-    <main className="flex flex-1 items-center justify-center px-4 py-16">
-      <div className="w-full max-w-md space-y-6 text-center">
-        <div className="space-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
-            Dashboard
+    <main className="min-h-screen bg-[#FAFAFC] px-5 py-8 text-[#111827]">
+      <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-8">
+        <header>
+          <p className="text-sm font-medium text-[#6B7280]">Selamat datang kembali</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+            Dashboard DUITku
           </h1>
-          <p className="text-zinc-600 dark:text-zinc-400">
-            Selamat datang, {user?.name}! ({user?.email})
+          <p className="mt-2 text-sm text-[#6B7280]">
+            {user?.name || user?.email} dapat memantau kondisi keuangan dari satu tempat.
           </p>
-          <p className="text-sm text-zinc-500 dark:text-zinc-500">
-            Ringkasan keuangan dan riwayat transaksi akan tampil di sini.
-          </p>
-        </div>
-        <div className="flex items-center justify-center gap-3">
-          <Link
-            href="/"
-            className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-800"
-          >
-            Beranda
-          </Link>
-          <LogoutButton />
-        </div>
+        </header>
+
+        <SummaryCards summary={summary} />
+
+        {previewTransactions.length > 0 ? (
+          <TransactionHistory transactions={previewTransactions} />
+        ) : (
+          <EmptyState />
+        )}
       </div>
     </main>
   );
