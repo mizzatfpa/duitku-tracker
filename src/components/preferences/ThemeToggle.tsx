@@ -49,7 +49,7 @@ export default function ThemeToggle({
       title={
         theme === "dark" ? "Tema terang" : "Tema gelap"
       }
-      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-700 shadow-sm transition hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-app-border bg-surface text-app-muted shadow-sm transition hover:bg-primary-100 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800 dark:hover:text-primary-300"
     >
       {theme === "dark" ? (
         <Sun className="h-5 w-5" aria-hidden="true" />

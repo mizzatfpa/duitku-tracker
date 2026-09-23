@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Figtree, Geist_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
 import {
@@ -7,8 +7,8 @@ import {
   normalizeTheme,
 } from "@/lib/preferences/theme";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const figtree = Figtree({
+  variable: "--font-figtree",
   subsets: ["latin"],
 });
 
@@ -33,7 +33,7 @@ export default async function RootLayout({
   return (
     <html
       lang="id"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased${
+      className={`${figtree.variable} ${geistMono.variable} h-full antialiased${
         theme === "dark" ? " dark" : ""
       }`}
     >
