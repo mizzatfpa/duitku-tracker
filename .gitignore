@@ -34,9 +34,6 @@ yarn-error.log*
 .env*
 !.env.example
 
-# local data placeholder (belum ada skema database; lihat src/lib/auth/account-store.ts)
-/data
-
 # vercel
 .vercel
 
