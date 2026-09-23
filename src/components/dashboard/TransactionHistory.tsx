@@ -1,8 +1,10 @@
+import type { ReactNode } from 'react';
 import type { TransactionItem } from '@/types';
 import { formatCurrency } from './formatCurrency';
 
 type TransactionHistoryProps = {
   transactions: TransactionItem[];
+  renderActions?: (transaction: TransactionItem) => ReactNode;
 };
 
 function formatDate(date: Date): string {
@@ -13,7 +15,7 @@ function formatDate(date: Date): string {
   }).format(date);
 }
 
-export function TransactionHistory({ transactions }: TransactionHistoryProps) {
+export function TransactionHistory({ transactions, renderActions }: TransactionHistoryProps) {
   return (
     <section aria-labelledby="history-heading">
       <div className="mb-4 flex items-center justify-between gap-4">
@@ -49,9 +51,12 @@ export function TransactionHistory({ transactions }: TransactionHistoryProps) {
                     </p>
                   </div>
                 </div>
-                <p className={`shrink-0 font-semibold ${isIncome ? 'text-emerald-700' : 'text-red-700'}`}>
-                  {isIncome ? '+' : '-'} {formatCurrency(transaction.amount)}
-                </p>
+                <div className="flex items-center justify-between gap-4 sm:justify-end">
+                  <p className={`shrink-0 font-semibold ${isIncome ? 'text-emerald-700' : 'text-red-700'}`}>
+                    {isIncome ? '+' : '-'} {formatCurrency(transaction.amount)}
+                  </p>
+                  {renderActions?.(transaction)}
+                </div>
               </li>
             );
           })}
