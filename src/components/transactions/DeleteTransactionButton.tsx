@@ -87,7 +87,7 @@ export default function DeleteTransactionButton({
         disabled={busy}
         aria-label="Hapus transaksi"
         title="Hapus transaksi"
-        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-500 shadow-sm transition hover:border-rose-300 hover:text-rose-600 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:border-rose-800 dark:hover:text-rose-400"
+        className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-app-border bg-surface text-app-muted shadow-sm transition hover:border-red-300 hover:text-red-600 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:border-red-800 dark:hover:text-red-400"
       >
         <Trash2 className="h-4 w-4" aria-hidden="true" />
       </button>
@@ -98,7 +98,7 @@ export default function DeleteTransactionButton({
 
       {confirmOpen ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-primary-900/40 p-4"
           onClick={() => {
             if (!busy) setConfirmOpen(false);
           }}
@@ -108,17 +108,17 @@ export default function DeleteTransactionButton({
             aria-modal="true"
             aria-labelledby="delete-tx-title"
             aria-describedby="delete-tx-desc"
-            className="w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-5 shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
+            className="w-full max-w-sm rounded-3xl border border-app-border bg-surface p-5 shadow-[0_8px_24px_rgba(0,0,0,0.08)] dark:border-zinc-700 dark:bg-zinc-900"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2.5">
-                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-rose-100 text-rose-600 dark:bg-rose-950 dark:text-rose-400">
-                  <AlertTriangle className="h-4.5 w-4.5" aria-hidden="true" />
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400">
+                  <AlertTriangle className="h-5 w-5" aria-hidden="true" />
                 </span>
                 <h2
                   id="delete-tx-title"
-                  className="text-sm font-semibold text-zinc-900 dark:text-zinc-100"
+                  className="text-sm font-semibold text-app-text dark:text-zinc-100"
                 >
                   Hapus transaksi?
                 </h2>
@@ -128,14 +128,14 @@ export default function DeleteTransactionButton({
                 onClick={() => setConfirmOpen(false)}
                 disabled={busy}
                 aria-label="Tutup dialog"
-                className="rounded-md p-1 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600 disabled:opacity-60 dark:hover:bg-zinc-800"
+                className="rounded-lg p-2 text-app-muted transition hover:bg-primary-100 hover:text-primary-700 disabled:opacity-60 dark:hover:bg-zinc-800"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
             <p
               id="delete-tx-desc"
-              className="mt-3 text-sm text-zinc-600 dark:text-zinc-300"
+              className="mt-3 text-sm text-app-muted dark:text-zinc-300"
             >
               {transactionLabel
                 ? `“${transactionLabel}” akan dihapus permanen dan tidak bisa dikembalikan.`
@@ -147,7 +147,7 @@ export default function DeleteTransactionButton({
                 type="button"
                 onClick={() => setConfirmOpen(false)}
                 disabled={busy}
-                className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                className="h-12 rounded-2xl bg-primary-100 px-4 text-sm font-medium text-primary-700 transition hover:bg-primary-300/50 disabled:opacity-60 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
               >
                 Batal
               </button>
@@ -155,7 +155,7 @@ export default function DeleteTransactionButton({
                 type="button"
                 onClick={handleConfirm}
                 disabled={busy}
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-rose-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 disabled:opacity-60"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-red-500 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-red-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:opacity-60"
               >
                 {busy ? (
                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />

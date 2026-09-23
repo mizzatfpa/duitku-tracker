@@ -21,10 +21,10 @@ export default function OperationFeedback({
   return (
     <p
       role={isSuccess ? "status" : "alert"}
-      className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-sm ${
+      className={`flex items-start gap-2 rounded-xl border px-3.5 py-2.5 text-sm ${
         isSuccess
-          ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300"
-          : "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950 dark:text-rose-300"
+          ? "border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-300"
+          : "border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
       }`}
     >
       {isSuccess ? (
