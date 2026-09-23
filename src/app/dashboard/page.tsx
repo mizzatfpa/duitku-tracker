@@ -8,10 +8,10 @@ export const metadata: Metadata = {
 };
 
 /**
- * Halaman dashboard. Sesuai SRS Bagian 8, isi dashboard (ringkasan, riwayat,
- * komponen transaksi) milik Orang 3 dan Orang 4. Branch autentikasi ini hanya
- * menyediakan placeholder serta proteksi akses; ganti isi halaman ini oleh
- * pemilik dashboard tanpa menghapus pemanggilan verifySession().
+ * Halaman dashboard (placeholder di branch autentikasi). verifySession()
+ * mengarahkan pengguna tanpa session ke /login, lalu getCurrentUser()
+ * mengambil identitas pengguna masuk tanpa hash kata sandi. Isi dashboard
+ * diisi oleh pemilik halaman; pertahankan kedua pemanggilan tersebut.
  */
 export default async function DashboardPage() {
   await verifySession();

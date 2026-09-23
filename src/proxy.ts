@@ -19,7 +19,7 @@ export default async function proxy(req: NextRequest) {
   );
   const isAuthRoute = authRoutes.some((route) => path.startsWith(route));
 
-  // Pengunjung tanpa session tidak boleh membuka dashboard (SRS-FR-006).
+  // Rute yang dilindungi: tanpa session valid, arahkan ke halaman masuk.
   if (isProtectedRoute && !isAuthenticated) {
     return NextResponse.redirect(new URL("/login", req.nextUrl));
   }

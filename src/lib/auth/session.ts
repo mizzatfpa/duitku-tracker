@@ -9,7 +9,8 @@ import { authLog } from "@/lib/auth/logger";
  * Empat langkah rekomendasi docs Next.js untuk stateless session
  * (authentication → session management → stateless sessions).
  * Variabel dibaca dari SATU file `.env` (tidak ada env.dev/env.prod).
- * Durasi session 1 jam (SRS-FR-004).
+ * Masa berlaku token dan cookie diatur `SESSION_MAX_AGE_SECONDS` (1 jam);
+ * `refreshSession()` memperpanjang cookie selama pengguna masih aktif.
  */
 const COOKIE_NAME = "session";
 const SESSION_MAX_AGE_SECONDS = 60 * 60; // 1 jam

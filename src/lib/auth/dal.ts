@@ -6,9 +6,9 @@ import { findAccountById, toUserDTO } from "@/lib/auth/account-store";
 import type { UserDTO } from "@/lib/auth/types";
 
 /**
- * Data Access Layer autentikasi (SRS-FR-004): memvalidasi session pada
- * setiap operasi yang membutuhkan identitas pengguna. Diduplikat dengan
- * React cache agar tidak membaca cookie berkali-kali dalam satu render.
+ * Lapisan akses data autentikasi: memvalidasi session pada setiap operasi
+ * yang membutuhkan identitas pengguna. Dibungkus React cache agar cookie
+ * tidak dibaca berkali-kali dalam satu render.
  */
 export const verifySession = cache(async () => {
   const session = await getSession();

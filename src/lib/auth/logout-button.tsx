@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { logout } from "@/lib/auth/actions";
 
-/** Tombol keluar (SRS-FR-005) — dipasang pada halaman yang hanya untuk pengguna masuk. */
+/** Tombol keluar — memanggil server action logout untuk menghapus session. */
 export function LogoutButton() {
   const [, action, pending] = useActionState(logout, undefined);
 
