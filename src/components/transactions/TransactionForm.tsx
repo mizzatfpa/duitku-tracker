@@ -27,10 +27,10 @@ interface TransactionFormProps {
 }
 
 const inputClass =
-  "w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm transition placeholder:text-zinc-400 hover:border-zinc-300 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:hover:border-zinc-600";
+  "h-12 w-full rounded-xl border border-app-border bg-surface px-3.5 text-sm text-app-text shadow-sm transition placeholder:text-app-muted hover:border-primary-300 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/25 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:hover:border-zinc-600";
 
 const inputErrorClass =
-  "w-full rounded-lg border border-rose-400 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm transition placeholder:text-zinc-400 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/30 dark:border-rose-500 dark:bg-zinc-900 dark:text-zinc-100";
+  "h-12 w-full rounded-xl border border-red-400 bg-surface px-3.5 text-sm text-app-text shadow-sm transition placeholder:text-app-muted focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/25 dark:border-red-500 dark:bg-zinc-900 dark:text-zinc-100";
 
 function toRaw(initialData?: Transaction | null): RawTransactionForm {
   if (!initialData) {
@@ -43,6 +43,19 @@ function toRaw(initialData?: Transaction | null): RawTransactionForm {
     category: initialData.category ?? "",
     note: initialData.note ?? "",
   };
+}
+
+function FieldError({ message, id }: { message: string; id?: string }) {
+  return (
+    <p
+      id={id}
+      role="alert"
+      className="mt-1.5 flex items-center gap-1 text-xs text-red-600 dark:text-red-400"
+    >
+      <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
+      {message}
+    </p>
+  );
 }
 
 export default function TransactionForm({
@@ -85,7 +98,7 @@ export default function TransactionForm({
       {serverError ? (
         <p
           role="alert"
-          className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950 dark:text-rose-300"
+          className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
         >
           <XCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           {serverError}
@@ -93,8 +106,8 @@ export default function TransactionForm({
       ) : null}
 
       <fieldset>
-        <legend className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200">
-          Jenis transaksi <span aria-hidden="true" className="text-rose-500">*</span>
+        <legend className="mb-1.5 block text-sm font-medium text-app-text dark:text-zinc-200">
+          Jenis transaksi <span aria-hidden="true" className="text-red-500">*</span>
         </legend>
         <div
           role="radiogroup"
@@ -111,12 +124,12 @@ export default function TransactionForm({
             return (
               <label
                 key={option.value}
-                className={`cursor-pointer rounded-lg border px-3 py-2 text-center text-sm font-medium transition focus-within:ring-2 focus-within:ring-emerald-500/30 ${
+                className={`flex h-12 cursor-pointer items-center justify-center rounded-2xl border px-3 text-sm font-medium transition focus-within:ring-2 focus-within:ring-primary-500/25 ${
                   selected
                     ? option.value === "pemasukan"
-                      ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:border-emerald-500 dark:bg-emerald-950 dark:text-emerald-300"
-                      : "border-rose-500 bg-rose-50 text-rose-700 dark:border-rose-500 dark:bg-rose-950 dark:text-rose-300"
-                    : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+                      ? "border-green-500 bg-green-50 text-green-700 dark:border-green-500 dark:bg-green-950 dark:text-green-300"
+                      : "border-red-500 bg-red-50 text-red-700 dark:border-red-500 dark:bg-red-950 dark:text-red-300"
+                    : "border-app-border bg-surface text-app-muted hover:border-primary-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
                 }`}
               >
                 <input
@@ -132,20 +145,15 @@ export default function TransactionForm({
             );
           })}
         </div>
-        {errors.type ? (
-          <p role="alert" className="mt-1.5 flex items-center gap-1 text-xs text-rose-600 dark:text-rose-400">
-            <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
-            {errors.type}
-          </p>
-        ) : null}
+        {errors.type ? <FieldError message={errors.type} /> : null}
       </fieldset>
 
       <div>
         <label
           htmlFor="tx-amount"
-          className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
+          className="mb-1.5 block text-sm font-medium text-app-text dark:text-zinc-200"
         >
-          Jumlah (Rp) <span aria-hidden="true" className="text-rose-500">*</span>
+          Jumlah (Rp) <span aria-hidden="true" className="text-red-500">*</span>
         </label>
         <input
           id="tx-amount"
@@ -161,19 +169,16 @@ export default function TransactionForm({
           className={errors.amount ? inputErrorClass : inputClass}
         />
         {errors.amount ? (
-          <p id="tx-amount-error" role="alert" className="mt-1.5 flex items-center gap-1 text-xs text-rose-600 dark:text-rose-400">
-            <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
-            {errors.amount}
-          </p>
+          <FieldError message={errors.amount} id="tx-amount-error" />
         ) : null}
       </div>
 
       <div>
         <label
           htmlFor="tx-date"
-          className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
+          className="mb-1.5 block text-sm font-medium text-app-text dark:text-zinc-200"
         >
-          Tanggal <span aria-hidden="true" className="text-rose-500">*</span>
+          Tanggal <span aria-hidden="true" className="text-red-500">*</span>
         </label>
         <input
           id="tx-date"
@@ -186,19 +191,16 @@ export default function TransactionForm({
           className={errors.date ? inputErrorClass : inputClass}
         />
         {errors.date ? (
-          <p id="tx-date-error" role="alert" className="mt-1.5 flex items-center gap-1 text-xs text-rose-600 dark:text-rose-400">
-            <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
-            {errors.date}
-          </p>
+          <FieldError message={errors.date} id="tx-date-error" />
         ) : null}
       </div>
 
       <div>
         <label
           htmlFor="tx-category"
-          className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
+          className="mb-1.5 block text-sm font-medium text-app-text dark:text-zinc-200"
         >
-          Kategori <span className="font-normal text-zinc-400">(opsional)</span>
+          Kategori <span className="font-normal text-app-muted">(opsional)</span>
         </label>
         <input
           id="tx-category"
@@ -217,20 +219,15 @@ export default function TransactionForm({
             <option key={c} value={c} />
           ))}
         </datalist>
-        {errors.category ? (
-          <p role="alert" className="mt-1.5 flex items-center gap-1 text-xs text-rose-600 dark:text-rose-400">
-            <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
-            {errors.category}
-          </p>
-        ) : null}
+        {errors.category ? <FieldError message={errors.category} /> : null}
       </div>
 
       <div>
         <label
           htmlFor="tx-note"
-          className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
+          className="mb-1.5 block text-sm font-medium text-app-text dark:text-zinc-200"
         >
-          Catatan <span className="font-normal text-zinc-400">(opsional)</span>
+          Catatan <span className="font-normal text-app-muted">(opsional)</span>
         </label>
         <textarea
           id="tx-note"
@@ -240,14 +237,9 @@ export default function TransactionForm({
           placeholder="Contoh: Makan siang bersama teman"
           value={raw.note}
           onChange={(e) => set("note", e.target.value)}
-          className={`${errors.note ? inputErrorClass : inputClass} resize-y`}
+          className={`${errors.note ? inputErrorClass : inputClass} h-auto resize-y py-2.5`}
         />
-        {errors.note ? (
-          <p role="alert" className="mt-1.5 flex items-center gap-1 text-xs text-rose-600 dark:text-rose-400">
-            <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
-            {errors.note}
-          </p>
-        ) : null}
+        {errors.note ? <FieldError message={errors.note} /> : null}
       </div>
 
       <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
@@ -256,7 +248,7 @@ export default function TransactionForm({
             type="button"
             onClick={onCancel}
             disabled={pending}
-            className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="h-12 rounded-2xl bg-primary-100 px-4 text-sm font-medium text-primary-700 transition hover:bg-primary-300/50 disabled:opacity-60 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
           >
             Batal
           </button>
@@ -264,7 +256,7 @@ export default function TransactionForm({
         <button
           type="submit"
           disabled={pending}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:opacity-60"
+          className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary-500 px-4 text-sm font-medium text-white shadow-[0_8px_24px_rgba(139,92,246,0.25)] transition hover:bg-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:opacity-60"
         >
           {pending ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
