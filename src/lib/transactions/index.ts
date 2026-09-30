@@ -1,5 +1,5 @@
 import prisma from '../db/prisma';
-import { CreateTransactionInput, UpdateTransactionInput } from '../../types';
+import { CreateTransactionInput, UpdateTransactionInput, TransactionFilter } from '../../types';
 import { validateCreateTransaction, validateUpdateTransaction } from './validation';
 import { Prisma } from '@prisma/client';
 
@@ -193,5 +193,55 @@ export async function getFinancialSummary(userId: string) {
   } catch (error) {
     console.error('Failed to calculate financial summary:', error);
     return { success: false, errors: ['Terjadi kesalahan saat menghitung ringkasan keuangan.'] };
+  }
+}
+
+/**
+ * Mengambil transaksi milik pengguna dengan filter dinamis.
+ * Filter yang didukung: tipe (INCOME/EXPENSE), kategori, rentang tanggal (startDate, endDate),
+ * atau berdasarkan bulan dan tahun spesifik.
+ */
+export async function getFilteredTransactions(userId: string, filter: TransactionFilter) {
+  try {
+    const where: Prisma.TransactionWhereInput = {
+      userId,
+    };
+
+    if (filter.type) {
+      where.type = filter.type;
+    }
+
+    if (filter.category) {
+      where.category = {
+        contains: filter.category,
+        mode: 'insensitive', // Case-insensitive search for category
+      };
+    }
+
+    // Prioritaskan startDate & endDate jika diberikan,
+    // Jika tidak ada, gunakan month & year jika tersedia.
+    if (filter.startDate || filter.endDate) {
+      where.date = {};
+      if (filter.startDate) where.date.gte = new Date(filter.startDate);
+      if (filter.endDate) where.date.lte = new Date(filter.endDate);
+    } else if (filter.month && filter.year) {
+      // month dalam 1-12
+      const startDate = new Date(filter.year, filter.month - 1, 1);
+      const endDate = new Date(filter.year, filter.month, 0, 23, 59, 59, 999);
+      where.date = {
+        gte: startDate,
+        lte: endDate,
+      };
+    }
+
+    const transactions = await prisma.transaction.findMany({
+      where,
+      orderBy: { date: 'desc' },
+    });
+
+    return { success: true, data: transactions };
+  } catch (error) {
+    console.error('Failed to get filtered transactions:', error);
+    return { success: false, errors: ['Terjadi kesalahan saat mengambil data filter transaksi.'] };
   }
 }
