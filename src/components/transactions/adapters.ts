@@ -59,10 +59,12 @@ export function toUpdateInput(
 
 /** Konversi item kanonis menjadi data awal form (mode ubah). */
 export function toFormInitial(item: TransactionItem): Transaction {
-  const date =
-    item.date instanceof Date
-      ? item.date.toISOString().slice(0, 10)
-      : String(item.date).slice(0, 10);
+  const itemDate = item.date instanceof Date ? item.date : new Date(item.date);
+  const date = [
+    itemDate.getFullYear(),
+    String(itemDate.getMonth() + 1).padStart(2, "0"),
+    String(itemDate.getDate()).padStart(2, "0"),
+  ].join("-");
   return {
     id: item.id,
     type: fromCanonicalType(item.type),

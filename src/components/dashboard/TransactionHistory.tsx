@@ -1,8 +1,12 @@
 import type { TransactionItem } from '@/types';
+import { Pencil } from 'lucide-react';
+import DeleteTransactionButton from '@/components/transactions/DeleteTransactionButton';
 import { formatCurrency } from './formatCurrency';
 
 type TransactionHistoryProps = {
   transactions: TransactionItem[];
+  onEdit?: (transaction: TransactionItem) => void;
+  onDelete?: (id: string) => Promise<{ ok: boolean; error?: string }>;
 };
 
 function formatDate(date: Date): string {
@@ -13,7 +17,11 @@ function formatDate(date: Date): string {
   }).format(date);
 }
 
-export function TransactionHistory({ transactions }: TransactionHistoryProps) {
+export function TransactionHistory({
+  transactions,
+  onEdit,
+  onDelete,
+}: TransactionHistoryProps) {
   return (
     <section aria-labelledby="history-heading">
       <div className="mb-4 flex items-center justify-between gap-4">
@@ -49,9 +57,29 @@ export function TransactionHistory({ transactions }: TransactionHistoryProps) {
                     </p>
                   </div>
                 </div>
-                <p className={`shrink-0 font-semibold ${isIncome ? 'text-emerald-700' : 'text-red-700'}`}>
-                  {isIncome ? '+' : '-'} {formatCurrency(transaction.amount)}
-                </p>
+                <div className="flex items-center justify-between gap-3 sm:justify-end">
+                  <p className={`shrink-0 font-semibold ${isIncome ? 'text-emerald-700' : 'text-red-700'}`}>
+                    {isIncome ? '+' : '-'} {formatCurrency(transaction.amount)}
+                  </p>
+                  {onEdit ? (
+                    <button
+                      type="button"
+                      onClick={() => onEdit(transaction)}
+                      aria-label="Ubah transaksi"
+                      title="Ubah transaksi"
+                      className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-app-border bg-surface text-app-muted shadow-sm transition hover:border-primary-300 hover:text-primary-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400"
+                    >
+                      <Pencil className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  ) : null}
+                  {onDelete ? (
+                    <DeleteTransactionButton
+                      id={transaction.id}
+                      transactionLabel={`${isIncome ? 'Pemasukan' : 'Pengeluaran'} ${formatCurrency(transaction.amount)}`}
+                      onDelete={onDelete}
+                    />
+                  ) : null}
+                </div>
               </li>
             );
           })}
