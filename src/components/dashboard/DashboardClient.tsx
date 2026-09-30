@@ -1,23 +1,27 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import BudgetCard from '@/components/budget/BudgetCard';
+import BudgetModal from '@/components/budget/BudgetModal';
+import { getBudgetProgress } from '@/components/budget/adapters';
+import type { BudgetProgress } from '@/components/budget/types';
 import { calculateSummary } from '@/components/dashboard/calculateSummary';
 import { EmptyState } from '@/components/dashboard/EmptyState';
 import { SummaryCards } from '@/components/dashboard/SummaryCards';
-import { TransactionHistory } from '@/components/dashboard/TransactionHistory';
 import AddTransactionCTA from '@/components/transactions/AddTransactionCTA';
 import OperationFeedback from '@/components/transactions/OperationFeedback';
+import TransactionFilter from '@/components/transactions/TransactionFilter';
 import TransactionForm from '@/components/transactions/TransactionForm';
-import { toCreateInput, toFormInitial, toUpdateInput } from '@/components/transactions/adapters';
-import type { TransactionFormData } from '@/components/transactions/types';
+import TransactionHistoryList from '@/components/transactions/TransactionHistoryList';
+import useTransactionAjax from '@/components/transactions/useTransactionAjax';
+import { toFormInitial } from '@/components/transactions/adapters';
+import type {
+  Transaction,
+  TransactionFormData,
+} from '@/components/transactions/types';
 import type { TransactionItem } from '@/types';
-import {
-  createTransactionAction,
-  deleteTransactionAction,
-  getTransactionsAction,
-  updateTransactionAction,
-} from '@/lib/transactions/actions';
+import { getFilteredTransactionsAction } from '@/lib/transactions/actions';
 
 type DashboardClientProps = {
   initialTransactions: TransactionItem[];
@@ -26,11 +30,15 @@ type DashboardClientProps = {
   initialYear: number;
 };
 
-function sortTransactions(transactions: TransactionItem[]): TransactionItem[] {
-  return [...transactions].sort(
-    (first, second) =>
-      new Date(second.date).getTime() - new Date(first.date).getTime(),
-  );
+function getPeriodTransactions(
+  transactions: TransactionItem[],
+  month: number,
+  year: number,
+): TransactionItem[] {
+  return transactions.filter((transaction) => {
+    const date = new Date(transaction.date);
+    return date.getMonth() + 1 === month && date.getFullYear() === year;
+  });
 }
 
 export function DashboardClient({
@@ -39,141 +47,128 @@ export function DashboardClient({
   initialMonth,
   initialYear,
 }: DashboardClientProps) {
-  const [transactions, setTransactions] = useState(initialTransactions);
+  const initialPeriodTransactions = useMemo(
+    () => getPeriodTransactions(initialTransactions, initialMonth, initialYear),
+    [initialTransactions, initialMonth, initialYear],
+  );
+  const transactionAjax = useTransactionAjax({
+    initialTransactions: initialPeriodTransactions.map(toFormInitial),
+    initialFilter: {
+      type: 'ALL',
+      month: initialMonth,
+      year: initialYear,
+    },
+  });
   const [selectedMonth, setSelectedMonth] = useState(initialMonth);
   const [selectedYear, setSelectedYear] = useState(initialYear);
-  const [editing, setEditing] = useState<TransactionItem | null>(null);
+  const [summary, setSummary] = useState(() =>
+    calculateSummary(initialPeriodTransactions),
+  );
+  const [budgetProgress, setBudgetProgress] = useState<BudgetProgress | null>(
+    null,
+  );
+  const [budgetLoading, setBudgetLoading] = useState(true);
+  const [budgetError, setBudgetError] = useState<string | null>(null);
+  const [budgetModalOpen, setBudgetModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Transaction | null>(null);
   const [formOpen, setFormOpen] = useState(false);
-  const [pending, setPending] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [loadError, setLoadError] = useState(initialLoadError);
-  const [feedback, setFeedback] = useState<{
-    status: 'success' | 'error';
-    message: string;
-  } | null>(null);
+  const [summaryError, setSummaryError] = useState(initialLoadError);
   const formRef = useRef<HTMLElement>(null);
+  const metricsRequestId = useRef(0);
 
-  const periodTransactions = useMemo(
-    () =>
-      transactions.filter((transaction) => {
-        const date = new Date(transaction.date);
-        return (
-          date.getMonth() + 1 === selectedMonth &&
-          date.getFullYear() === selectedYear
-        );
-      }),
-    [transactions, selectedMonth, selectedYear],
-  );
-  const summary = useMemo(
-    () => calculateSummary(periodTransactions),
-    [periodTransactions],
-  );
+  const refreshPeriodMetrics = useCallback(async (month: number, year: number) => {
+    const requestId = metricsRequestId.current + 1;
+    metricsRequestId.current = requestId;
+    setBudgetLoading(true);
+    setBudgetError(null);
+    setSummaryError(null);
 
-  async function refreshTransactions(): Promise<boolean> {
-    setRefreshing(true);
-    setLoadError(null);
     try {
-      const result = await getTransactionsAction();
-      if (!result.success) {
-        setLoadError(result.errors.join(' '));
-        return false;
+      const summaryResult = await getFilteredTransactionsAction({
+        type: 'ALL',
+        month,
+        year,
+      });
+      if (requestId !== metricsRequestId.current) return;
+      if (!summaryResult.success) {
+        setSummaryError(summaryResult.errors.join(' '));
+      } else {
+        setSummary(calculateSummary(summaryResult.data));
       }
-      setTransactions(sortTransactions(result.data));
-      return true;
-    } catch {
-      setLoadError('Transaksi tidak dapat dimuat. Periksa koneksi lalu coba lagi.');
-      return false;
-    } finally {
-      setRefreshing(false);
-    }
-  }
 
-  function openForm(transaction: TransactionItem | null = null) {
+      const budgetResult = await getBudgetProgress(month, year);
+      if (requestId !== metricsRequestId.current) return;
+      if (!budgetResult.success) {
+        setBudgetError(budgetResult.errors.join(' '));
+      } else {
+        setBudgetProgress(budgetResult.data);
+      }
+    } catch {
+      if (requestId === metricsRequestId.current) {
+        setSummaryError('Ringkasan periode gagal dimuat. Silakan coba lagi.');
+        setBudgetError('Anggaran gagal dimuat. Silakan coba lagi.');
+      }
+    } finally {
+      if (requestId === metricsRequestId.current) setBudgetLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      void refreshPeriodMetrics(selectedMonth, selectedYear);
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [refreshPeriodMetrics, selectedMonth, selectedYear]);
+
+  function openForm(transaction: Transaction | null = null) {
     setEditing(transaction);
     setFormOpen(true);
-    setFeedback(null);
+    transactionAjax.clearFeedback();
     requestAnimationFrame(() =>
       formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
     );
   }
 
   async function handleSubmit(data: TransactionFormData) {
-    setPending(true);
-    setFeedback(null);
-    try {
-      const result = editing
-        ? await updateTransactionAction(toUpdateInput(editing.id, data))
-        : await createTransactionAction(toCreateInput(data));
+    const result = editing
+      ? await transactionAjax.handleUpdateTransaction(editing.id, data)
+      : await transactionAjax.handleAddTransaction(data);
 
-      if (!result.success) {
-        setFeedback({ status: 'error', message: result.errors.join(' ') });
-        return;
-      }
-
-      setTransactions((current) => {
-        const next = editing
-          ? current.map((transaction) =>
-              transaction.id === editing.id ? result.data : transaction,
-            )
-          : [result.data, ...current];
-        return sortTransactions(next);
-      });
-      setFormOpen(false);
-      setEditing(null);
-
-      const refreshed = await refreshTransactions();
-      setFeedback({
-        status: 'success',
-        message: refreshed
-          ? editing
-            ? 'Transaksi berhasil diubah.'
-            : 'Transaksi berhasil ditambahkan.'
-          : 'Transaksi tersimpan. Tampilan sudah diperbarui, tetapi sinkronisasi ulang gagal.',
-      });
-    } catch {
-      setFeedback({
-        status: 'error',
-        message: 'Transaksi gagal disimpan. Silakan coba lagi.',
-      });
-    } finally {
-      setPending(false);
-    }
+    if (!result.ok) return;
+    setFormOpen(false);
+    setEditing(null);
+    await refreshPeriodMetrics(selectedMonth, selectedYear);
   }
 
-  async function handleDelete(id: string): Promise<{ ok: boolean; error?: string }> {
-    try {
-      const result = await deleteTransactionAction(id);
-      if (!result.success) {
-        return { ok: false, error: result.errors.join(' ') };
-      }
-
-      setTransactions((current) =>
-        current.filter((transaction) => transaction.id !== id),
-      );
-      if (editing?.id === id) {
-        setEditing(null);
-        setFormOpen(false);
-      }
-
-      const refreshed = await refreshTransactions();
-      setFeedback({
-        status: 'success',
-        message: refreshed
-          ? 'Transaksi berhasil dihapus.'
-          : 'Transaksi terhapus. Tampilan sudah diperbarui, tetapi sinkronisasi ulang gagal.',
-      });
-      return { ok: true };
-    } catch {
-      return {
-        ok: false,
-        error: 'Transaksi gagal dihapus. Silakan coba lagi.',
-      };
+  async function handleDelete(id: string) {
+    const result = await transactionAjax.handleDeleteTransaction(id);
+    if (result.ok) {
+      await refreshPeriodMetrics(selectedMonth, selectedYear);
     }
+    return result;
   }
 
-  const years = Array.from({ length: 7 }, (_, index) => initialYear - 5 + index);
+  function handlePeriodChange(month: number, year: number) {
+    setSelectedMonth(month);
+    setSelectedYear(year);
+    void transactionAjax.handleFilterChange({
+      ...transactionAjax.activeFilter,
+      month,
+      year,
+    });
+  }
+
+  const years = Array.from(
+    { length: 7 },
+    (_, index) => initialYear - 5 + index,
+  );
   if (!years.includes(selectedYear)) years.push(selectedYear);
   years.sort((first, second) => first - second);
+
+  const hasNarrowingFilter =
+    transactionAjax.activeFilter.type !== 'ALL' ||
+    Boolean(transactionAjax.activeFilter.category) ||
+    Boolean(transactionAjax.activeFilter.searchQuery);
 
   return (
     <main className="min-h-screen bg-app-background px-5 py-8 text-app-text dark:text-zinc-100">
@@ -197,7 +192,7 @@ export function DashboardClient({
         </header>
 
         <section
-          aria-label="Periode ringkasan"
+          aria-label="Periode dashboard"
           className="flex flex-wrap items-end gap-3"
         >
           <div>
@@ -210,7 +205,9 @@ export function DashboardClient({
             <select
               id="dashboard-month"
               value={selectedMonth}
-              onChange={(event) => setSelectedMonth(Number(event.target.value))}
+              onChange={(event) =>
+                handlePeriodChange(Number(event.target.value), selectedYear)
+              }
               className="h-11 rounded-xl border border-app-border bg-surface px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
             >
               {Array.from({ length: 12 }, (_, index) => (
@@ -232,7 +229,9 @@ export function DashboardClient({
             <select
               id="dashboard-year"
               value={selectedYear}
-              onChange={(event) => setSelectedYear(Number(event.target.value))}
+              onChange={(event) =>
+                handlePeriodChange(selectedMonth, Number(event.target.value))
+              }
               className="h-11 rounded-xl border border-app-border bg-surface px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
             >
               {years.map((year) => (
@@ -242,34 +241,106 @@ export function DashboardClient({
               ))}
             </select>
           </div>
-          {refreshing ? (
-            <p role="status" className="pb-2 text-sm text-app-muted">
-              Memperbarui transaksi…
-            </p>
-          ) : null}
         </section>
 
-        <OperationFeedback
-          status={feedback?.status ?? null}
-          message={feedback?.message ?? null}
-        />
-
-        {loadError ? (
+        {summaryError ? (
           <div
             role="alert"
-            className="flex flex-col gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between dark:border-red-900 dark:bg-red-950 dark:text-red-300"
+            className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
           >
-            <p>{loadError}</p>
+            <p>{summaryError}</p>
             <button
               type="button"
-              onClick={() => void refreshTransactions()}
-              disabled={refreshing}
-              className="h-10 rounded-xl border border-current px-4 font-medium disabled:opacity-60"
+              onClick={() => void refreshPeriodMetrics(selectedMonth, selectedYear)}
+              className="mt-2 font-semibold underline"
             >
-              Coba lagi
+              Coba muat ulang
             </button>
           </div>
         ) : null}
+
+        <SummaryCards summary={summary} />
+
+        <BudgetCard
+          progress={budgetProgress}
+          loading={budgetLoading}
+          onOpenSetModal={() => setBudgetModalOpen(true)}
+        />
+        {budgetError ? (
+          <p role="alert" className="-mt-6 text-sm text-red-600 dark:text-red-400">
+            {budgetError}{' '}
+            <button
+              type="button"
+              onClick={() => void refreshPeriodMetrics(selectedMonth, selectedYear)}
+              className="font-semibold underline"
+            >
+              Coba lagi
+            </button>
+          </p>
+        ) : null}
+
+        <section aria-labelledby="history-heading" className="space-y-4">
+          <div>
+            <p className="text-sm font-medium text-app-muted dark:text-zinc-400">
+              Aktivitas periode terpilih
+            </p>
+            <h2 id="history-heading" className="mt-1 text-2xl font-semibold">
+              Riwayat transaksi
+            </h2>
+          </div>
+          <TransactionFilter
+            activeType={transactionAjax.activeFilter.type ?? 'ALL'}
+            selectedCategory={transactionAjax.activeFilter.category}
+            searchQuery={transactionAjax.activeFilter.searchQuery}
+            onFilterChange={(filter) =>
+              void transactionAjax.handleFilterChange(filter)
+            }
+            loading={transactionAjax.loading}
+            disabled={transactionAjax.submitting}
+          />
+          <OperationFeedback
+            status={transactionAjax.feedback?.status ?? null}
+            message={transactionAjax.feedback?.message ?? null}
+          />
+          {transactionAjax.error ? (
+            <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+              {transactionAjax.error}
+            </p>
+          ) : null}
+
+          {transactionAjax.transactions.length > 0 || transactionAjax.loading ? (
+            <TransactionHistoryList
+              transactions={transactionAjax.transactions}
+              loading={transactionAjax.loading}
+              submitting={transactionAjax.submitting}
+              onDelete={handleDelete}
+              emptyMessage={
+                hasNarrowingFilter
+                  ? 'Tidak ada transaksi yang cocok dengan filter ini.'
+                  : 'Belum ada transaksi pada periode ini.'
+              }
+              renderActions={(transaction) => (
+                <button
+                  type="button"
+                  onClick={() => openForm(transaction)}
+                  disabled={transactionAjax.submitting}
+                  aria-label="Ubah transaksi"
+                  className="inline-flex h-11 items-center justify-center rounded-xl border border-app-border px-3 text-sm font-medium text-app-muted hover:border-primary-300 hover:text-primary-700 disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-300"
+                >
+                  Ubah
+                </button>
+              )}
+            />
+          ) : hasNarrowingFilter ? (
+            <TransactionHistoryList
+              transactions={[]}
+              onDelete={handleDelete}
+              emptyMessage="Tidak ada transaksi yang cocok dengan filter ini."
+            />
+          ) : (
+            <EmptyState onAddTransaction={() => openForm()} />
+          )}
+        </section>
 
         {formOpen ? (
           <section
@@ -287,7 +358,7 @@ export function DashboardClient({
                   setFormOpen(false);
                   setEditing(null);
                 }}
-                disabled={pending}
+                disabled={transactionAjax.submitting}
                 className="rounded-lg px-3 py-2 text-sm text-app-muted hover:bg-primary-100 disabled:opacity-60 dark:hover:bg-zinc-800"
               >
                 Tutup
@@ -295,8 +366,8 @@ export function DashboardClient({
             </div>
             <TransactionForm
               key={editing?.id ?? 'new'}
-              initialData={editing ? toFormInitial(editing) : null}
-              pending={pending}
+              initialData={editing}
+              pending={transactionAjax.submitting}
               onSubmit={handleSubmit}
               onCancel={
                 editing
@@ -310,24 +381,18 @@ export function DashboardClient({
           </section>
         ) : null}
 
-        <SummaryCards summary={summary} />
-
-        {periodTransactions.length > 0 ? (
-          <TransactionHistory
-            transactions={periodTransactions}
-            onEdit={openForm}
-            onDelete={handleDelete}
-          />
-        ) : (
-          <div className="space-y-4">
-            <EmptyState onAddTransaction={() => openForm()} />
-            {transactions.length > 0 ? (
-              <p className="text-center text-sm text-app-muted dark:text-zinc-400">
-                Tidak ada transaksi pada periode yang dipilih.
-              </p>
-            ) : null}
-          </div>
-        )}
+        <BudgetModal
+          isOpen={budgetModalOpen}
+          onClose={() => setBudgetModalOpen(false)}
+          month={selectedMonth}
+          year={selectedYear}
+          currentAmount={
+            budgetProgress?.hasBudget ? budgetProgress.budgetAmount : undefined
+          }
+          onBudgetUpdated={() =>
+            void refreshPeriodMetrics(selectedMonth, selectedYear)
+          }
+        />
       </div>
     </main>
   );

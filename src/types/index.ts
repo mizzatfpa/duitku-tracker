@@ -41,3 +41,14 @@ export interface UpdateTransactionInput {
   description?: string | null;
   date?: Date | string;
 }
+
+export * from './budget';
+
+export interface TransactionFilter {
+  type?: TransactionType;
+  category?: string;
+  month?: number;
+  year?: number;
+  startDate?: Date | string;
+  endDate?: Date | string;
+}
