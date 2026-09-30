@@ -1,218 +1,196 @@
 # Software Requirements Specification
 
-## Expense Tracker Mahasiswa
+## Expense Tracker Mahasiswa — DUITku Tracker
 
 | Informasi | Nilai |
 |---|---|
-| Versi | 1.1 |
-| Status | Draf kebutuhan |
-| Nama aplikasi | Duitku Tracker |
-| Tanggal | 23 September 2026 |
+| Versi | 2.0 |
+| Status | Spesifikasi Kebutuhan & Integrasi Fase 2 (AJAX & Budget Bulanan) |
+| Nama aplikasi | DUITku Tracker |
+| Tanggal | 30 September 2026 |
+| Project Manager (PM) | Muhammad Nauval Fadli |
+
+---
 
 ## 1. Pendahuluan
 
 ### 1.1 Tujuan
+Dokumen Software Requirements Specification (SRS) versi 2.0 ini menetapkan kebutuhan fungsional, nonfungsional, arsitektur teknis, dan kontrak integrasi untuk pengembangan lanjutan aplikasi web **DUITku Tracker**. Dokumen ini menjadi acuan kerja resmi bagi tim pengembang yang terdiri dari 4 orang programmer di bawah supervisi Project Manager (PM) untuk menyelesaikan evaluasi implementasi AJAX dan penambahan fitur Budget Bulanan.
 
-Dokumen ini menetapkan kebutuhan fungsional dan nonfungsional untuk aplikasi web Expense Tracker yang membantu mahasiswa mengelola pemasukan dan pengeluaran pribadi. Dokumen ini menjadi acuan implementasi dan pemeriksaan hasil kerja tim.
+### 1.2 Ruang Lingkup Proyek
+Aplikasi DUITku Tracker adalah aplikasi manajemen keuangan pribadi berbasis web untuk mahasiswa. Pada Fase 2 ini, ruang lingkup mencakup:
+1. **Audit & Implementasi Penuh AJAX (Asynchronous JavaScript and XML/JSON):**
+   - Menghilangkan ketergantungan reload halaman penuh (*full page reload*) pada seluruh alur utama.
+   - Pembaruan dinamis tanpa muat ulang pada:
+     - **Dashboard:** Ringkasan keuangan (*summary cards*), saldo, dan indikator aktivitas.
+     - **Manajemen Transaksi:** Penambahan, pengubahan, dan penghapusan transaksi secara asinkron dengan pembaruan data seketika (*reactive UI update*).
+     - **Filter Transaksi:** Penyaringan riwayat berdasarkan jenis transaksi (Semua, Pemasukan, Pengeluaran), kategori, dan periode waktu secara instan di sisi klien/server tanpa memuat ulang browser.
+2. **Fitur Baru: Budget Bulanan (Monthly Budget):**
+   - Pengguna dapat menetapkan alokasi batas anggaran pengeluaran bulanan (nominal IDR) untuk periode bulan dan tahun tertentu.
+   - Sistem memantau dan menghitung penggunaan anggaran secara otomatis berdasarkan akumulasi transaksi bertipe pengeluaran (*EXPENSE*) pada bulan bersangkutan.
+   - Visualisasi persentase dan sisa anggaran melalui indikator progress bar dan sistem peringatan (*warning/overbudget alert*).
+   - Penegakan isolasi data ketat (*multi-tenancy*): pengguna hanya dapat melihat, menetapkan, mengubah, dan menghapus anggaran miliknya sendiri.
 
-### 1.2 Ruang Lingkup
+*Catatan Ruang Lingkup Luar:* Fitur integrasi payment gateway pihak ketiga, multi-currency selain IDR, dan transfer saldo antar pengguna tetap berada di luar ruang lingkup versi ini.
 
-Aplikasi memungkinkan pengguna membuat akun, masuk dan keluar, mencatat transaksi pemasukan maupun pengeluaran, melihat riwayat transaksi, serta memantau saldo dan ringkasan keuangan. Setiap transaksi harus dimiliki oleh satu pengguna dan hanya dapat diakses oleh pemiliknya. Status login dipertahankan selama session masih berlaku, dan aplikasi menyimpan setidaknya satu preferensi pengguna menggunakan cookies.
+### 1.3 Definisi dan Istilah
+- **AJAX:** Teknik komunikasi asinkron antara antarmuka pengguna (klien) dan server di balik layar tanpa memicu muat ulang halaman web (*zero full-page reload*).
+- **Pengguna:** Mahasiswa yang telah mendaftar dan memiliki akun aktif di DUITku Tracker.
+- **Transaksi:** Catatan aliran kas masuk (*INCOME*) atau keluar (*EXPENSE*) milik pengguna.
+- **Budget Bulanan:** Batas nominal pengeluaran yang ditetapkan pengguna untuk satu siklus bulan kalender (1–12) pada tahun tertentu.
+- **Realisasi Pengeluaran (Actual Expense):** Total penjumlahan nilai transaksi pengeluaran pengguna pada bulan dan tahun anggaran terkait.
+- **Overbudget:** Kondisi di mana total realisasi pengeluaran melampaui nominal budget yang telah ditetapkan.
 
-Fitur anggaran, rekening bank, transfer antar pengguna, dan integrasi layanan pembayaran tidak termasuk dalam ruang lingkup versi ini.
+---
 
-### 1.3 Istilah
+## 2. Gambaran Umum Sistem
 
-- **Pengguna:** mahasiswa yang memiliki akun aplikasi.
-- **Transaksi:** catatan pemasukan atau pengeluaran milik pengguna.
-- **Session:** status autentikasi pengguna yang berlaku selama masa session.
-- **Preferensi:** pengaturan tampilan pengguna yang disimpan dalam cookie; preferensi awal yang ditetapkan dokumen ini adalah tema terang/gelap.
+### 2.1 Arsitektur & Tumpukan Teknologi
+- **Framework:** Next.js (App Router) & React
+- **Bahasa:** TypeScript
+- **Styling:** Tailwind CSS (DUITku Purple Fintech Design System)
+- **Database:** PostgreSQL Lokal dengan Prisma ORM
+- **Autentikasi & Session:** Stateful/Encrypted Session Cookie (`HttpOnly`, `SameSite=Lax`, server-side validation)
 
-## 2. Gambaran Umum
+### 2.2 Struktur Tim & Peran
+Pengembangan Fase 2 dipimpin oleh Project Manager dengan 4 Programmer yang bekerja secara paralel pada branch terpisah:
 
-### 2.1 Perspektif Produk
-
-Aplikasi merupakan aplikasi web. Repositori menggunakan Next.js, TypeScript, Tailwind CSS, dan App Router sebagai dasar proyek. Data akun dan transaksi disimpan secara persisten pada PostgreSQL lokal. Mekanisme autentikasi dan session disediakan oleh implementasi aplikasi.
-
-### 2.2 Kelas Pengguna
-
-- **Pengunjung:** belum masuk; hanya dapat membuka halaman daftar akun dan masuk.
-- **Pengguna terautentikasi:** dapat mengelola transaksi dan melihat ringkasan keuangan miliknya sendiri.
-
-### 2.3 Lingkungan Operasi
-
-Aplikasi diakses melalui peramban web modern pada komputer maupun perangkat seluler. Antarmuka utama menggunakan Bahasa Indonesia.
-
-### 2.4 Batasan dan Asumsi
-
-- Setiap akun memiliki alamat email unik.
-- Setiap transaksi memiliki tepat satu pemilik.
-- Nilai transaksi harus lebih besar dari nol.
-- Transaksi memiliki jenis pemasukan atau pengeluaran.
-- Preferensi cookie versi awal adalah tema terang atau gelap.
-- Jumlah keuangan ditampilkan dalam Rupiah (IDR).
-- Instance PostgreSQL untuk versi tugas ini berjalan secara lokal dan diakses aplikasi melalui konfigurasi lingkungan.
-
-## 3. Kebutuhan Antarmuka
-
-### 3.1 Antarmuka Pengguna
-
-Aplikasi menyediakan halaman daftar akun, masuk, dan dashboard. Dashboard menampilkan ringkasan keuangan dan riwayat transaksi, serta menyediakan alur untuk menambah, mengubah, dan menghapus transaksi. Form harus menampilkan validasi dan umpan balik yang mudah dipahami.
-
-### 3.2 Antarmuka Sistem
-
-Aplikasi harus menghubungkan antarmuka dengan layanan autentikasi dan penyimpanan transaksi. Database yang digunakan adalah PostgreSQL lokal. Kontrak antarmodul yang wajib dipenuhi dijelaskan pada Bagian 8.
-
-## 4. Kebutuhan Fungsional
-
-Semua kebutuhan berikut berprioritas **Wajib**.
-
-### 4.1 Akun dan Autentikasi — Orang 1
-
-Penanggung jawab: **Muhammad Fikri (24060124130069)**.
-
-- **SRS-FR-001:** Sistem harus memungkinkan pengunjung membuat akun menggunakan alamat email dan kata sandi.
-- **SRS-FR-002:** Sistem harus menolak pendaftaran jika alamat email telah digunakan dan menjelaskan kesalahan tanpa membuat akun duplikat.
-- **SRS-FR-003:** Sistem harus memungkinkan pengguna masuk menggunakan kredensial akun yang valid dan menolak kredensial yang tidak valid.
-- **SRS-FR-004:** Setelah berhasil masuk, sistem harus mempertahankan status login saat pengguna berpindah halaman atau memuat ulang halaman, selama session masih berlaku.
-- **SRS-FR-005:** Sistem harus menyediakan fungsi keluar yang mengakhiri session pengguna.
-- **SRS-FR-006:** Sistem harus mencegah pengunjung mengakses dashboard dan mengarahkan mereka ke halaman masuk.
-
-### 4.2 Data dan Operasi Transaksi — Orang 2
-
-Penanggung jawab: **Akbar Mukti Wibowo (24060124130063)**.
-
-Tanggung jawab ini mencakup konfigurasi koneksi PostgreSQL lokal, skema/migrasi tabel, dan lapisan data/server. Tanggung jawab ini tidak mencakup halaman atau form transaksi di browser.
-
-- **SRS-FR-007:** Sistem harus menyimpan transaksi dengan sekurang-kurangnya informasi ID transaksi, pemilik, jenis, jumlah, tanggal, kategori, dan catatan.
-- **SRS-FR-008:** Sistem harus memungkinkan pengguna membuat transaksi pemasukan atau pengeluaran dengan jumlah positif dan tanggal transaksi.
-- **SRS-FR-009:** Sistem harus memungkinkan pengguna melihat daftar transaksi miliknya.
-- **SRS-FR-010:** Sistem harus memungkinkan pengguna mengubah transaksi miliknya.
-- **SRS-FR-011:** Sistem harus memungkinkan pengguna menghapus transaksi miliknya.
-- **SRS-FR-012:** Pada setiap operasi baca, ubah, dan hapus, sistem harus memeriksa kepemilikan transaksi. Pengguna tidak boleh membaca atau mengubah transaksi pengguna lain, termasuk dengan mengubah ID pada permintaan.
-- **SRS-FR-013:** Sistem harus menolak transaksi dengan jenis yang tidak dikenal atau jumlah yang tidak valid.
-
-### 4.3 Dashboard dan Riwayat — Orang 3
-
-Penanggung jawab: **Muhammad Rofad Hamdani (24060124130117)**.
-
-Tanggung jawab ini hanya mencakup tampilan dashboard, ringkasan, dan riwayat baca-saja. Perhitungan ringkasan menggunakan data pengguna yang diberikan oleh lapisan data. Modul ini tidak membuat atau mengubah operasi tulis transaksi.
-
-- **SRS-FR-014:** Dashboard harus menampilkan total pemasukan dan total pengeluaran pengguna yang sedang masuk.
-- **SRS-FR-015:** Dashboard harus menampilkan saldo yang dihitung sebagai total pemasukan dikurangi total pengeluaran.
-- **SRS-FR-016:** Perhitungan ringkasan hanya boleh menggunakan transaksi milik pengguna yang sedang masuk.
-- **SRS-FR-017:** Dashboard harus menampilkan riwayat transaksi beserta jenis, jumlah, tanggal, kategori, dan catatan jika tersedia.
-- **SRS-FR-018:** Jika pengguna belum memiliki transaksi, dashboard harus menampilkan keadaan kosong yang menjelaskan bahwa transaksi belum tersedia.
-- **SRS-FR-019:** Ringkasan dan riwayat harus mencerminkan hasil setelah transaksi berhasil ditambah, diubah, atau dihapus.
-
-### 4.4 Form, Preferensi, dan Integrasi — Orang 4
-
-Penanggung jawab: **Muhammad Nauval Fadli (24060124120027)**.
-
-Tanggung jawab ini mencakup komponen antarmuka untuk operasi transaksi dan preferensi tema. Operasi simpan/ubah/hapus dipanggil melalui kontrak lapisan data milik Orang 2; modul ini tidak membuat skema database atau menulis langsung ke PostgreSQL. Ringkasan dan daftar riwayat tetap dimiliki Orang 3.
-
-- **SRS-FR-020:** Antarmuka harus menyediakan form untuk menambah dan mengubah transaksi, serta aksi untuk menghapus transaksi.
-- **SRS-FR-021:** Form harus memvalidasi kolom wajib dan jumlah transaksi sebelum mengirim data, serta menampilkan pesan kesalahan yang dapat dipahami.
-- **SRS-FR-022:** Antarmuka harus meminta konfirmasi sebelum menghapus transaksi dan menampilkan umpan balik setelah operasi berhasil atau gagal.
-- **SRS-FR-023:** Pengguna harus dapat memilih tema terang atau gelap. Pilihan tema harus disimpan menggunakan cookie dan diterapkan kembali setelah halaman dimuat ulang.
-- **SRS-FR-024:** Antarmuka transaksi harus terhubung ke autentikasi, operasi transaksi, dashboard, dan riwayat sesuai kebutuhan di atas.
-
-## 5. Kebutuhan Data dan Aturan Bisnis
-
-### 5.1 Entitas Data
-
-- **Pengguna:** ID pengguna, email unik, kata sandi yang tersimpan dalam bentuk hash, dan waktu pembuatan akun.
-- **Transaksi:** ID transaksi, ID pemilik, jenis transaksi, jumlah dalam IDR, tanggal transaksi, kategori, catatan opsional, serta waktu pembuatan dan perubahan.
-- **Preferensi:** pilihan tema yang disimpan di cookie pada peramban pengguna.
-- **Session:** informasi autentikasi yang memungkinkan sistem mengenali pengguna selama session masih berlaku.
-
-### 5.2 Aturan Bisnis
-
-- Identitas pemilik transaksi ditetapkan berdasarkan pengguna yang sedang terautentikasi; form tidak boleh mengizinkan pengguna memilih atau mengganti pemilik.
-- Total pemasukan adalah jumlah seluruh transaksi bertipe pemasukan milik pengguna.
-- Total pengeluaran adalah jumlah seluruh transaksi bertipe pengeluaran milik pengguna.
-- Saldo adalah total pemasukan dikurangi total pengeluaran dan boleh bernilai negatif.
-- Nilai jumlah transaksi disimpan dan ditampilkan dalam Rupiah (IDR).
-
-### 5.3 Penyimpanan PostgreSQL Lokal
-
-- Data akun dan transaksi harus bertahan setelah aplikasi atau PostgreSQL dimulai ulang.
-- Tabel pengguna harus memiliki ID unik dan email unik serta menyimpan hash kata sandi.
-- Tabel transaksi harus memiliki ID unik dan kolom pemilik yang menjadi foreign key ke tabel pengguna.
-- PostgreSQL menjadi sumber data utama untuk akun dan transaksi; data transaksi tidak boleh hanya disimpan di state browser atau cookie.
-- Konfigurasi koneksi dan kredensial lokal disimpan di file lingkungan yang tidak di-commit. Repositori boleh menyediakan contoh variabel konfigurasi tanpa nilai rahasia.
-
-## 6. Kebutuhan Nonfungsional
-
-- **SRS-NFR-001 — Keamanan kata sandi:** Kata sandi tidak boleh disimpan sebagai teks biasa; sistem harus menyimpan hash kata sandi.
-- **SRS-NFR-002 — Keamanan session:** Cookie session harus memiliki perlindungan yang sesuai untuk produksi, termasuk `HttpOnly`, `Secure` melalui HTTPS, dan `SameSite` yang sesuai. Session harus divalidasi pada operasi yang membutuhkan autentikasi.
-- **SRS-NFR-003 — Privasi dan otorisasi:** Pemeriksaan kepemilikan data dilakukan di sisi server untuk setiap operasi transaksi; menyembunyikan data hanya di antarmuka tidak dianggap cukup.
-- **SRS-NFR-004 — Preferensi cookie:** Cookie preferensi hanya menyimpan pilihan tema dan tidak boleh digunakan sebagai bukti autentikasi.
-- **SRS-NFR-005 — Kemudahan penggunaan:** Halaman dan form harus dapat digunakan pada layar komputer dan ponsel, dengan label yang jelas serta pesan kesalahan yang mudah dimengerti.
-- **SRS-NFR-006 — Konsistensi data:** Sistem hanya menampilkan konfirmasi keberhasilan setelah perubahan transaksi berhasil disimpan.
-- **SRS-NFR-007 — Persistensi database:** Data akun dan transaksi harus disimpan di PostgreSQL lokal dan tetap tersedia setelah aplikasi dimulai ulang.
-
-## 7. Kriteria Penerimaan per Penanggung Jawab
-
-### Orang 1 — Muhammad Fikri
-
-- Pengguna dapat mendaftar dengan email yang belum digunakan dan menerima penolakan untuk email duplikat.
-- Pengguna dapat masuk dengan kredensial valid, tetap masuk setelah memuat ulang halaman selama session aktif, dan keluar dari aplikasi.
-- Pengunjung yang membuka dashboard tanpa session diarahkan ke halaman masuk.
-
-### Orang 2 — Akbar Mukti Wibowo
-
-- Pengguna dapat membuat, melihat, mengubah, dan menghapus transaksi miliknya.
-- Transaksi dengan jumlah nol atau negatif dan jenis yang tidak dikenal ditolak.
-- Percobaan mengakses transaksi milik pengguna lain ditolak.
-
-### Orang 3 — Muhammad Rofad Hamdani
-
-- Dashboard menampilkan pemasukan, pengeluaran, dan saldo sesuai transaksi milik pengguna.
-- Riwayat menampilkan informasi transaksi dan keadaan kosong saat belum ada transaksi.
-- Ringkasan dan riwayat berubah setelah operasi transaksi berhasil.
-
-### Orang 4 — Muhammad Nauval Fadli
-
-- Form menambah dan mengubah transaksi terhubung dengan operasi transaksi yang tersedia.
-- Penghapusan meminta konfirmasi dan menampilkan hasil operasi.
-- Pilihan tema tersimpan di cookie dan tetap diterapkan setelah halaman dimuat ulang.
-- Antarmuka tetap dapat digunakan pada layar komputer dan ponsel.
-
-## 8. Pembagian Modul dan Kontrak Integrasi
-
-Pembagian berikut menetapkan pemilik setiap lapisan agar tidak ada dua orang yang mengimplementasikan fungsi yang sama. Setiap orang mengubah modul yang menjadi tanggung jawabnya. Perubahan pada kontrak bersama harus disepakati sebelum diimplementasikan.
-
-| Orang | Pemilik modul dan hasil kerja | Batas tanggung jawab |
+| Nama | Peran | Fokus Tanggung Jawab Utama |
 |---|---|---|
-| **1 — Muhammad Fikri (24060124130069)** | Halaman daftar/masuk/keluar, validasi alur autentikasi, hash kata sandi sebelum penyimpanan, pembuatan dan validasi session, serta proteksi halaman untuk pengguna yang belum masuk. | Menggunakan fungsi penyimpanan akun dari Orang 2. Tidak mengubah skema PostgreSQL atau lapisan data. Session autentikasi berbeda dari cookie tema milik Orang 4. |
-| **2 — Akbar Mukti Wibowo (24060124130063)** | Konfigurasi koneksi PostgreSQL lokal, skema/migrasi tabel pengguna dan transaksi, akses data akun untuk autentikasi, serta operasi server untuk membuat, membaca, mengubah, dan menghapus transaksi. | Satu-satunya pemilik skema database dan lapisan data. Tidak membuat halaman dashboard, riwayat, atau form transaksi. Semua query transaksi harus menggunakan identitas dari session server, bukan `user_id` kiriman browser. |
-| **3 — Muhammad Rofad Hamdani (24060124130117)** | Halaman/dashboard, kartu ringkasan, perhitungan saldo/pemasukan/pengeluaran, riwayat baca-saja, keadaan kosong, dan pemasangan komponen transaksi yang disediakan Orang 4 pada dashboard. | Mengonsumsi fungsi baca/transaksi dari Orang 2. Tidak menulis ke PostgreSQL dan tidak membuat logika form atau aksi tambah/ubah/hapus. Menjadi pemilik file halaman dashboard agar Orang 4 tidak mengubah file halaman yang sama. |
-| **4 — Muhammad Nauval Fadli (24060124120027)** | Komponen form tambah/ubah, kontrol aksi hapus dan konfirmasi, pesan hasil operasi, serta pemilihan dan penyimpanan tema melalui cookie. Menghubungkan komponen form ke operasi tulis milik Orang 2. | Memiliki komponen transaksi dan preferensi, bukan file halaman dashboard. Tidak mengubah skema/lapisan data atau menghitung ringkasan/merender daftar riwayat. Menyerahkan komponen transaksi dengan kontrak props/callback kepada Orang 3 untuk dipasang. |
+| **Muhammad Nauval Fadli** | Project Manager (PM) | Menyusun SRS, perencanaan tugas, kontrak integrasi, QA checklist, dan supervisi merge pull request. |
+| **Akbar Mukti Wibowo** | Programmer 1 — Database & Backend Core | Skema database Prisma (Model Budget), migrasi database, server service layer, enkapsulasi query transaksi filter & kalkulasi budget, penegakan otorisasi data. |
+| **Muhammad Fikri** | Programmer 2 — AJAX Filter & Transaction Management | Logika AJAX filter riwayat transaksi, komponen filter/search, penanganan operasi asinkron transaksi (CRUD AJAX) tanpa reload halaman. |
+| **Muhammad Izzat** | Programmer 3 — UI & Form Budget Bulanan | Komponen visual Budget Card, progress bar monitoring penggunaan anggaran, modal & form pengaturan budget (set, edit, delete), feedback & validasi form. |
+| **Muhammad Rofad Hamdani** | Programmer 4 — Dashboard Integration & AJAX Orchestration | Integrasi halaman dashboard utama, orkestrasi pembaruan state reaktif antar komponen (Summary, Budget, Filter, History) secara asinkron tanpa reload. |
 
-### 8.1 Kontrak Data dan Serah-Terima
+---
 
-- **Pemilik database:** Orang 2 menyediakan PostgreSQL lokal, skema, koneksi, dan tipe data transaksi bersama. Skema minimal mencakup `users` dan `transactions`; kolom transaksi mencakup ID, `user_id`, jenis, jumlah, tanggal, kategori opsional, dan catatan opsional.
-- **Serah-terima autentikasi:** Orang 2 menyediakan operasi penyimpanan akun yang menerima email dan hash kata sandi. Orang 1 bertanggung jawab atas alur daftar/masuk, pembuatan hash, session, dan identitas pengguna terautentikasi.
-- **Serah-terima baca:** Orang 2 menyediakan operasi untuk mengambil transaksi milik pengguna yang sedang masuk. Orang 3 menggunakan hasil tersebut untuk riwayat dan ringkasan, tanpa menambahkan query atau tabel baru.
-- **Serah-terima tulis:** Orang 2 menyediakan operasi tambah/ubah/hapus yang memvalidasi pemilik dari session. Orang 4 mengirim data form tanpa menetapkan `user_id` dan menampilkan hasil operasi tersebut.
-- **Penegakan akses:** Semua operasi baca/tulis transaksi memperoleh identitas pengguna dari session terverifikasi. `user_id` tidak diterima sebagai sumber otorisasi dari input klien.
-- **Kepemilikan cookie:** Cookie session dikelola Orang 1. Cookie preferensi tema dikelola Orang 4. Keduanya memiliki tujuan dan nama yang berbeda.
-- **Kontrak antarmuka:** Sebelum implementasi paralel, tim menyepakati nama operasi, bentuk input/output, dan format kesalahan untuk autentikasi serta transaksi. Jika implementasi menggunakan API, Server Actions, atau layanan lain, pilihan itu tidak mengubah batas tanggung jawab di atas.
+## 3. Kebutuhan Antarmuka Pengguna & Sistem
 
-### 8.2 Batas File Kerja yang Disarankan
+### 3.1 Antarmuka Pengguna (UI)
+1. **Dashboard Reaktif:** Tampilan satu pintu yang mengonsolidasikan Ringkasan Keuangan (Saldo, Pemasukan, Pengeluaran), Widget Monitoring Budget Bulanan, Kontrol Tambah Transaksi, Filter Transaksi, dan Riwayat Transaksi.
+2. **Widget Budget Bulanan:** Kartu visual yang menampilkan nominal target budget, pengeluaran aktual, sisa budget, dan progress bar dengan perubahan warna dinamis:
+   - Hijau (< 80%): Pengeluaran aman.
+   - Kuning/Amber (80% - 100%): Mendekati batas anggaran.
+   - Merah (> 100%): Melebihi anggaran (Overbudget) dengan badge peringatan.
+3. **Panel Kontrol Filter:** Kontrol dropdown/tombol seleksi jenis transaksi, kategori, dan periode waktu yang merespons seketika.
+4. **Modal/Form Anggaran & Transaksi:** Antarmuka input data dengan validasi interaktif, feedback status sukses/gagal, dan indikator loading (*spinner*).
 
-Untuk mengurangi konflik saat bekerja bersamaan, tim dapat menggunakan pembagian direktori berikut. Setiap direktori memiliki satu pemilik; perubahan kontrak lintas direktori dibahas terlebih dahulu.
+### 3.2 Antarmuka Sistem & Batasan Komunikasi
+- Seluruh komunikasi data antara antarmuka klien dan server wajib dilakukan secara asinkron menggunakan Next.js Server Actions / Client API tanpa `window.location.reload()`.
+- Pengambilan identitas pengguna mutlak diverifikasi dari session server aktif; input `userId` dari browser tidak pernah dipercaya sebagai parameter otorisasi.
 
-| Pemilik | Direktori atau file yang dikerjakan |
-|---|---|
-| Orang 1 | `src/app/(auth)/**`, `src/lib/auth/**`, dan halaman awal `src/app/page.tsx` bila digunakan untuk alur masuk/daftar. |
-| Orang 2 | `src/lib/db/**`, `src/lib/users/**`, `src/lib/transactions/**`, dan tipe data bersama di `src/types/**`. |
-| Orang 3 | `src/app/(dashboard)/**` dan `src/components/dashboard/**`. Orang 3 memasang komponen Orang 4 di halaman dashboard. |
-| Orang 4 | `src/components/transactions/**`, `src/components/preferences/**`, `src/lib/preferences/**`, serta konfigurasi tema global `src/app/layout.tsx` dan `src/app/globals.css`. |
+---
 
-Jika struktur proyek berubah, tim mempertahankan prinsip pemilik tunggal per modul dan tidak mengerjakan file yang sama secara paralel. Integrasi dilakukan setelah pemilik modul menyepakati kontrak; perubahan pada file bersama dikerjakan bergantian.
+## 4. Kebutuhan Fungsional (Functional Requirements)
 
-## 9. Hal yang Belum Ditentukan
+Semua kebutuhan berikut berstatus **Wajib (Mandatory)**.
 
-Pilihan pustaka/ORM PostgreSQL, masa berlaku session, kategori bawaan, serta mekanisme teknis API atau Server Actions merupakan keputusan desain teknis tim. Keputusan tersebut harus tetap memenuhi seluruh kebutuhan keamanan, kepemilikan data, dan perilaku aplikasi dalam dokumen ini.
+### 4.1 Modul Database & Backend Core — Akbar Mukti Wibowo (Branch: `feat/akbar-budget-backend`)
+
+- **SRS-FR-025:** Sistem harus menyediakan model tabel `Budget` pada skema Prisma dengan atribut: `id` (String CUID/UUID), `userId` (FK ke User), `month` (Integer 1-12), `year` (Integer), `amount` (Decimal), `createdAt`, dan `updatedAt`.
+- **SRS-FR-026:** Sistem harus menerapkan *unique constraint* kombinasi `[userId, month, year]` pada tabel `Budget` sehingga seorang pengguna hanya dapat memiliki tepat satu entri budget per bulan dan tahun.
+- **SRS-FR-027:** Sistem harus menyediakan fungsi backend / Server Action untuk membuat atau memperbarui (*upsert*) budget bulanan pengguna yang sedang login.
+- **SRS-FR-028:** Sistem harus menyediakan fungsi backend / Server Action untuk menghapus budget bulanan milik pengguna yang sedang login berdasarkan verifikasi kepemilikan.
+- **SRS-FR-029:** Sistem harus menyediakan fungsi kalkulasi progres budget bulanan (`getMonthlyBudgetProgress`) yang mengembalikan: target budget, total pengeluaran aktual bulan tersebut (dihitung dari akumulasi transaksi `EXPENSE` milik pengguna pada rentang tanggal bulan & tahun terkait), sisa anggaran, dan persentase penggunaan.
+- **SRS-FR-030:** Sistem harus menyediakan fungsi backend filter transaksi (`getFilteredTransactions`) yang mendukung parameter opsional jenis (`INCOME` / `EXPENSE` / `ALL`), kategori, bulan, tahun, serta memastikan hanya mengembalikan transaksi milik pengguna yang terautentikasi.
+- **SRS-FR-031:** Setiap operasi query database untuk transaksi dan budget wajib menyaring data berdasarkan `userId` yang diperoleh dari session server, mencegah manipulasi ID akun lain (*IDOR prevention*).
+
+### 4.2 Modul AJAX Filter & Manajemen Transaksi — Muhammad Fikri (Branch: `feat/fikri-ajax-filter-transactions`)
+
+- **SRS-FR-032:** Sistem harus menyediakan komponen antarmuka Filter Transaksi yang memungkinkan pengguna memilih filter berdasarkan jenis transaksi (Semua / Pemasukan / Pengeluaran), kategori, serta periode bulan/tahun.
+- **SRS-FR-033:** Sistem harus mengeksekusi penyaringan riwayat transaksi secara asinkron (AJAX) tanpa memuat ulang halaman (*zero page reload*).
+- **SRS-FR-034:** Sistem harus mengimplementasikan alur AJAX penuh pada operasi tambah transaksi: setelah form dikirimkan, data transaksi baru langsung ditambahkan ke daftar riwayat dan ringkasan keuangan diperbarui tanpa me-reload browser.
+- **SRS-FR-035:** Sistem harus mengimplementasikan alur AJAX penuh pada operasi ubah transaksi: pembaruan data langsung terefleksi pada item riwayat secara asinkron.
+- **SRS-FR-036:** Sistem harus mengimplementasikan alur AJAX penuh pada operasi hapus transaksi: konfirmasi penghapusan dieksekusi secara asinkron dan item segera terhapus dari tampilan tanpa refresh halaman.
+- **SRS-FR-037:** Sistem harus menampilkan indikator pemuatan (*loading indicator/skeleton*) saat proses filter atau operasi CRUD transaksi sedang berlangsung di latar belakang.
+
+### 4.3 Modul UI & Form Budget Bulanan — Muhammad Izzat (Branch: `feat/izzat-budget-ui`)
+
+- **SRS-FR-038:** Sistem harus menyediakan komponen antarmuka `BudgetCard` yang menampilkan status anggaran bulan berjalan: target anggaran, total pengeluaran aktual, sisa anggaran (atau nominal defisit), dan persentase penggunaan.
+- **SRS-FR-039:** Komponen `BudgetCard` harus memiliki visual progress bar dengan perubahan warna adaptif (Hijau jika <80%, Kuning jika 80%–100%, Merah jika >100%).
+- **SRS-FR-040:** Jika pengguna belum menetapkan budget pada bulan tersebut, komponen harus menampilkan kondisi kosong (*empty state*) dengan ajakan aksi (*CTA*) untuk menetapkan anggaran.
+- **SRS-FR-041:** Jika pengeluaran telah melebihi target anggaran (>100%), antarmuka harus memunculkan peringatan visual (*Overbudget Alert*).
+- **SRS-FR-042:** Sistem harus menyediakan form/modal pengaturan budget yang memungkinkan pengguna memasukkan nominal anggaran, memilih bulan (1-12) dan tahun, serta tombol konfirmasi simpan.
+- **SRS-FR-043:** Form budget harus memvalidasi bahwa nominal anggaran bernilai positif (> 0) dan menampilkan pesan kesalahan jika input tidak valid.
+- **SRS-FR-044:** Form budget harus menyediakan opsi untuk menghapus/mereset anggaran bulanan dengan dialog konfirmasi.
+
+### 4.4 Modul Integrasi Dashboard & Orkestrasi AJAX — Muhammad Rofad Hamdani (Branch: `feat/rofad-dashboard-ajax-integration`)
+
+- **SRS-FR-045:** Halaman utama dashboard (`/dashboard`) harus bertransformasi menjadi dashboard dinamis yang bebas dari data statis/mock.
+- **SRS-FR-046:** Dashboard harus mengintegrasikan kartu ringkasan keuangan, widget budget bulanan, kontrol filter transaksi, dan daftar riwayat transaksi dalam satu tata letak yang harmonis.
+- **SRS-FR-047:** Dashboard harus mengorkestrasi pembaruan data antar modul secara reaktif: ketika terjadi penambahan/perubahan/penghapusan transaksi, nilai ringkasan saldo dan progres pengeluaran budget bulanan harus diperbarui seketika secara AJAX tanpa me-reload halaman.
+- **SRS-FR-048:** Dashboard harus menyediakan pemilih periode bulan/tahun aktif di bagian atas yang menyelaraskan data budget dan filter transaksi bulan tersebut secara serentak.
+- **SRS-FR-049:** Dashboard harus menangani seluruh kondisi tampilan (keadaan memuat/loading, keadaan kosong/empty state saat belum ada data, dan penanganan kesalahan komunikasi data).
+- **SRS-FR-050:** Antarmuka dashboard hasil integrasi harus responsif dan adaptif baik pada layar ponsel maupun desktop, serta mendukung tema terang dan gelap.
+
+---
+
+## 5. Kebutuhan Nonfungsional (Non-Functional Requirements)
+
+- **SRS-NFR-008 — Kepatuhan AJAX & UX Mulus:** Seluruh interaksi pengguna di dashboard (penyaringan, tambah, ubah, hapus transaksi, serta set budget) tidak boleh memicu muat ulang penuh peramban (`F5` / `window.location.reload`).
+- **SRS-NFR-009 — Keamanan & Isolasi Data (Multi-tenancy):** Semua query database dan eksekusi server wajib memverifikasi `userId` dari session server. Pengguna dilarang keras dapat melihat atau memanipulasi transaksi dan budget milik pengguna lain.
+- **SRS-NFR-010 — Performa Respon Asinkron:** Operasi AJAX harus memberikan umpan balik visual (*pending state/spinner*) seketika (< 100ms) dan menyelesaikan pembaruan data dalam waktu wajar (< 1.5 detik pada koneksi normal).
+- **SRS-NFR-011 — Validasi Integritas Data:** Validasi form wajib diterapkan di dua sisi (klien untuk UX cepat dan server untuk jaminan keamanan data). Nilai transaksi dan nominal budget harus berupa angka positif.
+- **SRS-NFR-012 — Konsistensi Desain:** Seluruh komponen baru wajib mematuhi standar desain DUITku (warna ungu fintech, font Figtree, radius komponen konsisten, dan transisi halus).
+
+---
+
+## 6. Kriteria Penerimaan (Acceptance Criteria per Programmer)
+
+### 6.1 Programmer 1 — Akbar Mukti Wibowo
+- [ ] Model `Budget` dan migrasi database PostgreSQL sukses dijalankan tanpa error.
+- [ ] Constraint unik `[userId, month, year]` mencegah duplikasi budget pada periode yang sama.
+- [ ] Fungsi `setMonthlyBudget`, `getMonthlyBudget`, `deleteMonthlyBudget`, dan `getMonthlyBudgetProgress` berfungsi benar dan teruji.
+- [ ] Fungsi `getFilteredTransactions` berhasil menyaring transaksi berdasarkan tipe, kategori, dan tanggal/bulan.
+- [ ] Percobaan manipulasi query lintas user ditolak (data tetap terisolasi per akun).
+
+### 6.2 Programmer 2 — Muhammad Fikri
+- [ ] Komponen filter transaksi tampil di atas daftar riwayat transaksi.
+- [ ] Memilih jenis transaksi (Semua / Pemasukan / Pengeluaran) memfilter riwayat secara instan tanpa reload browser.
+- [ ] Operasi tambah transaksi memperbarui daftar transaksi secara AJAX tanpa reload halaman.
+- [ ] Operasi ubah transaksi memperbarui item transaksi secara AJAX tanpa reload halaman.
+- [ ] Operasi hapus transaksi menghilangkan item seketika secara AJAX tanpa reload halaman.
+- [ ] Loading indicator / skeleton muncul saat data transaksi sedang diproses.
+
+### 6.3 Programmer 3 — Muhammad Izzat
+- [ ] Komponen `BudgetCard` berhasil menampilkan target budget, pengeluaran aktual, dan sisa budget.
+- [ ] Progress bar berubah warna secara akurat sesuai persentase penggunaan (<80% hijau, 80-100% kuning, >100% merah).
+- [ ] Alert "Overbudget" muncul saat pengeluaran melebihi anggaran yang ditetapkan.
+- [ ] Modal/form budget memungkinkan input nominal, bulan, tahun, dengan validasi angka positif.
+- [ ] Form budget mendukung operasi simpan, ubah, dan hapus anggaran dengan feedback status yang jelas.
+
+### 6.4 Programmer 4 — Muhammad Rofad Hamdani
+- [ ] Halaman `/dashboard` terbebas 100% dari data dummy/mock statis.
+- [ ] Komponen Budget (dari Izzat), Filter & Transaksi AJAX (dari Fikri), dan Summary Cards terpasang rapi di dashboard.
+- [ ] Menambah/menghapus transaksi pengeluaran langsung mengupdate Summary Cards DAN progress Budget Bulanan secara reaktif tanpa reload halaman.
+- [ ] Mengganti periode bulan/tahun aktif memperbarui tampilan ringkasan, budget, dan riwayat transaksi secara terpadu.
+- [ ] Desain tampilan responsif (mobile & desktop) serta konsisten dengan toggle tema.
+
+---
+
+## 7. Batasan File Kerja & Matriks RACI
+
+Untuk mencegah konflik merge git (*merge conflict*), setiap programmer memiliki batas direktori dan file kerja yang ditentukan:
+
+| Programmer | Branch Git | Direktori / File yang Dimiliki & Diubah |
+|---|---|---|
+| **Akbar Mukti Wibowo** | `feat/akbar-budget-backend` | `prisma/schema.prisma`<br>`prisma/migrations/**`<br>`src/lib/budget/**`<br>`src/lib/transactions/index.ts`<br>`src/types/budget.ts`, `src/types/index.ts` |
+| **Muhammad Fikri** | `feat/fikri-ajax-filter-transactions` | `src/components/transactions/TransactionFilter.tsx`<br>`src/components/transactions/useTransactionAjax.ts`<br>`src/components/transactions/TransactionHistoryList.tsx`<br>`src/lib/transactions/actions.ts` (penambahan action filter) |
+| **Muhammad Izzat** | `feat/izzat-budget-ui` | `src/components/budget/BudgetCard.tsx`<br>`src/components/budget/BudgetProgress.tsx`<br>`src/components/budget/BudgetForm.tsx`<br>`src/components/budget/BudgetModal.tsx`<br>`src/components/budget/types.ts`<br>`src/components/budget/adapters.ts` |
+| **Muhammad Rofad Hamdani** | `feat/rofad-dashboard-ajax-integration` | `src/app/(dashboard)/dashboard/page.tsx`<br>`src/app/(dashboard)/dashboard/DashboardClient.tsx`<br>`src/components/dashboard/**` |
+
+### Matriks RACI Tim
+* **R (Responsible):** Programmer yang mengerjakan kode modul.
+* **A (Accountable):** Project Manager (Muhammad Nauval Fadli) yang menyetujui hasil dan melakukan merge ke `main`.
+* **C (Consulted):** Rekan programmer yang berkepentingan dengan kontrak integrasi antarmuka.
+* **I (Informed):** Seluruh anggota tim.
+
+| Aktivitas | Akbar | Fikri | Izzat | Rofad | Nauval (PM) |
+|---|:---:|:---:|:---:|:---:|:---:|
+| Skema Prisma & Backend Service Budget | **R** | I | C | C | **A** |
+| Service Query Filter Transaksi | **R** | C | I | C | **A** |
+| Komponen UI & Modal Budget | I | I | **R** | C | **A** |
+| Komponen Filter & AJAX Handler Transaksi | I | **R** | I | C | **A** |
+| Integrasi Dashboard & Orkestrasi Asinkron | C | C | C | **R** | **A** |
+| Code Review, QA Verification & PR Merge | I | I | I | I | **A / R** |
