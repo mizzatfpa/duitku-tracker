@@ -11,7 +11,7 @@
 // (Orang 4) tidak perlu penyesuaian.
 
 import { useEffect, useId, useRef, useState } from "react";
-import { ListFilter, Search, X } from "lucide-react";
+import { ListFilter, Loader2, Search, X } from "lucide-react";
 
 import type { FilterType } from "@/lib/transactions/filter";
 import { CATEGORY_SUGGESTIONS } from "./validation";
@@ -26,6 +26,12 @@ export interface TransactionFilterProps {
     searchQuery?: string;
   }) => void;
   disabled?: boolean;
+  /**
+   * Tampilan saja: menandai bahwa daftar di bawah sedang di-fetch. Filter tetap
+   * bisa diklik saat ini — useTransactionAjax memakai penanda request sehingga
+   * respons lama tidak akan menimpa hasil yang lebih baru.
+   */
+  loading?: boolean;
   /** Saran kategori untuk datalist. Default memakai CATEGORY_SUGGESTIONS. */
   categoryOptions?: readonly string[];
   /** Menunda pemanggilan onFilterChange agar tidak satu request per ketikan. */
@@ -57,12 +63,30 @@ const nativeFieldClass =
 const clearButtonClass =
   "absolute right-1.5 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-app-muted transition hover:bg-primary-100 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:opacity-50 dark:hover:bg-zinc-800 dark:hover:text-primary-300";
 
+/**
+ * Progress bar tipis di tepi kartu: penanda "permintaan sedang berjalan"
+ * tanpa menutupi daftar dan tanpa menggeser layout. `motion-reduce` membuat
+ * bar berhenti berdenyut bagi pengguna yang 운동nya dikurangi di OS.
+ */
+function LoadingBar() {
+  return (
+    <span
+      aria-hidden="true"
+      data-testid="transaction-filter-loading-bar"
+      className="absolute inset-x-0 top-0 block h-1 overflow-hidden bg-primary-100 dark:bg-zinc-800"
+    >
+      <span className="motion-safe:animate-pulse block h-full w-full bg-gradient-to-r from-primary-500 via-accent to-primary-500" />
+    </span>
+  );
+}
+
 export default function TransactionFilter({
   activeType,
   selectedCategory = "",
   searchQuery = "",
   onFilterChange,
   disabled = false,
+  loading = false,
   categoryOptions = CATEGORY_SUGGESTIONS,
   debounceMs = DEFAULT_DEBOUNCE_MS,
 }: TransactionFilterProps) {
@@ -135,11 +159,25 @@ export default function TransactionFilter({
   return (
     <section
       aria-label="Filter riwayat transaksi"
-      className="rounded-3xl border border-app-border bg-surface p-4 shadow-[0_8px_24px_rgba(0,0,0,0.08)] sm:p-5 dark:border-zinc-800 dark:bg-zinc-900"
+      aria-busy={loading}
+      className="relative overflow-hidden rounded-3xl border border-app-border bg-surface p-4 shadow-[0_8px_24px_rgba(0,0,0,0.08)] sm:p-5 dark:border-zinc-800 dark:bg-zinc-900"
     >
+      {loading ? <LoadingBar /> : null}
+
       <div className="mb-4 flex items-center gap-2 text-app-text dark:text-zinc-100">
         <ListFilter className="h-4 w-4 text-primary-500" aria-hidden="true" />
         <h2 className="text-sm font-semibold">Filter transaksi</h2>
+        {loading ? (
+          <>
+            <Loader2
+              className="h-3.5 w-3.5 animate-spin text-primary-500 motion-reduce:animate-none"
+              aria-hidden="true"
+            />
+            <span className="text-xs text-app-muted dark:text-zinc-400">
+              Memuat data…
+            </span>
+          </>
+        ) : null}
       </div>
 
       <div
