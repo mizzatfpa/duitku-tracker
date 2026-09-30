@@ -201,7 +201,7 @@ export default function useTransactionAjax(
     async (filter: { type: FilterType; category?: string; searchQuery?: string }) => {
       const next = normalizeTransactionFilter(filter);
       // Terapkan filter seketika supaya pill aktif tidak tampak "lag", walau
-      // datanya masih di-fetch (indikator that'll menampilkannya).
+      // datanya masih di-fetch; indikator loading yang menampilkannya.
       setActiveFilter(next);
       setFeedback(null);
       await fetchList(next);

@@ -66,7 +66,7 @@ const clearButtonClass =
 /**
  * Progress bar tipis di tepi kartu: penanda "permintaan sedang berjalan"
  * tanpa menutupi daftar dan tanpa menggeser layout. `motion-reduce` membuat
- * bar berhenti berdenyut bagi pengguna yang 운동nya dikurangi di OS.
+ * bar berhenti berdenyut bagi pengguna yang membatasi animasi di OS.
  */
 function LoadingBar() {
   return (
