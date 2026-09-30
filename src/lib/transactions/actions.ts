@@ -1,7 +1,9 @@
 'use server';
 
-import { CreateTransactionInput, UpdateTransactionInput } from '../../types';
+import { CreateTransactionInput, TransactionItem, UpdateTransactionInput } from '../../types';
 import * as TransactionService from './index';
+import { getFilteredTransactions } from './filter-service';
+import type { ActionResponse, TransactionFilter } from './filter';
 import { getSession } from '@/lib/auth/session';
 
 /**
@@ -70,6 +72,27 @@ export async function deleteTransactionAction(transactionId: string) {
   try {
     const userId = await getAuthUser();
     return await TransactionService.deleteTransaction(userId, transactionId);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Operasi transaksi gagal.';
+    return { success: false, errors: [message] };
+  }
+}
+
+/**
+ * Server Action: Mengambil transaksi milik pengguna yang sedang login dengan
+ * filter dinamis (jenis, kategori, kata kunci, bulan/tahun).
+ * Milik Fikri (TASK_BREAKDOWN §2, SRS-FR-030).
+ *
+ * `userId` SELALU dari session server, tidak pernah dari `filter` — filter hanya
+ * boleh mempersempit, tidak pernah mengganti pemilik data.
+ */
+export async function getFilteredTransactionsAction(
+  filter: TransactionFilter = {},
+): Promise<ActionResponse<TransactionItem[]>> {
+  try {
+    const userId = await getAuthUser();
+    return await getFilteredTransactions(userId, filter);
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Operasi transaksi gagal.';
