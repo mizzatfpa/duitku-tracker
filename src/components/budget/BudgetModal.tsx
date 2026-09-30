@@ -77,7 +77,7 @@ export default function BudgetModal({
     if (!isEdit) return;
     setPending(true);
     try {
-      const result = await deleteBudget(`${year}-${month}`);
+      const result = await deleteBudget(month, year);
       if (!result.success) {
         setServerError(result.errors.join(" "));
         setConfirmOpen(false);

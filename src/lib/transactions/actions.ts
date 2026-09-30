@@ -1,17 +1,30 @@
 'use server';
 
-import { CreateTransactionInput, TransactionItem, UpdateTransactionInput } from '../../types';
+import type {
+  CreateTransactionInput,
+  TransactionItem,
+  UpdateTransactionInput,
+} from '../../types';
+import { getSession } from '@/lib/auth/session';
 import * as TransactionService from './index';
 import { getFilteredTransactions } from './filter-service';
 import type { ActionResponse, TransactionFilter } from './filter';
 import { serializeTransaction, serializeTransactions } from './filter';
-import { getSession } from '@/lib/auth/session';
 
-/**
- * Mengambil userId pengguna yang sedang login dari session aktif (Orang 1).
- * Melempar error biasa (bukan redirect) agar catch pada tiap aksi otomatis
- * mengembalikan { success: false, errors } saat pengguna belum masuk.
- */
+type ActionStatus =
+  | { success: true; message?: string }
+  | { success: false; errors: string[] };
+
+function readErrors(result: object, fallback = 'Operasi transaksi gagal.'): string[] {
+  if ('errors' in result && Array.isArray(result.errors)) {
+    const errors = result.errors.filter(
+      (error): error is string => typeof error === 'string',
+    );
+    if (errors.length > 0) return errors;
+  }
+  return [fallback];
+}
+
 async function getAuthUser(): Promise<string> {
   const session = await getSession();
   if (!session?.userId) {
@@ -20,28 +33,6 @@ async function getAuthUser(): Promise<string> {
   return session.userId;
 }
 
-/**
- * Membaca pesan galat dari hasil service layer milik Akbar.
- *
- * `src/lib/transactions/index.ts` mengembalikan union yang belum dinormalisasi
- * (`success` ter-widen menjadi `boolean`, sehingga `data`/`errors` tidak bisa
- * di-narrow lewat pemeriksaan `success`). Fungsi ini menjembataninya supaya
- * setiap Server Action tetap punya bentuk `{ success, errors }` yang konsisten
- * dengan INTEGRATION_CONTRACT §3.1, tanpa harus mengubah file milik Akbar.
- */
-function readErrors(result: { errors?: string[] }): string[] {
-  return result.errors ?? ['Operasi transaksi gagal.'];
-}
-
-/**
- * Server Action: Menambah transaksi baru.
- * Dipanggil oleh form komponen Orang 4 dan useTransactionAjax (Fikri).
- *
- * Catatan: record Prisma dinormalisasi lewat `serializeTransaction` sebelum
- * dikembalikan. Tanpa itu field `amount` (Prisma Decimal) tidak bisa diserialisasi
- * React Server Component dan seluruh alur AJAX akan gagal saat pertama kali
- * mengirim data ke klien.
- */
 export async function createTransactionAction(
   input: CreateTransactionInput,
 ): Promise<ActionResponse<TransactionItem>> {
@@ -49,7 +40,7 @@ export async function createTransactionAction(
     const userId = await getAuthUser();
     const result = await TransactionService.createTransaction(userId, input);
     if (!result.success || !('data' in result) || !result.data) {
-      return { success: false, errors: readErrors(result) };
+      return { success: false, errors: readErrors(result, 'Transaksi gagal disimpan.') };
     }
     return { success: true, data: serializeTransaction(result.data) };
   } catch (error) {
@@ -59,11 +50,6 @@ export async function createTransactionAction(
   }
 }
 
-/**
- * Server Action: Mengambil daftar riwayat transaksi pengguna yang sedang login.
- * Dipanggil oleh halaman Dashboard Orang 3. Sudah dinormalisasi (lihat catatan
- * pada createTransactionAction).
- */
 export async function getTransactionsAction(): Promise<
   ActionResponse<TransactionItem[]>
 > {
@@ -71,7 +57,7 @@ export async function getTransactionsAction(): Promise<
     const userId = await getAuthUser();
     const result = await TransactionService.getTransactionsByUserId(userId);
     if (!result.success || !('data' in result) || !result.data) {
-      return { success: false, errors: readErrors(result) };
+      return { success: false, errors: readErrors(result, 'Transaksi gagal dimuat.') };
     }
     return { success: true, data: serializeTransactions(result.data) };
   } catch (error) {
@@ -81,11 +67,6 @@ export async function getTransactionsAction(): Promise<
   }
 }
 
-/**
- * Server Action: Mengubah transaksi yang sudah ada.
- * Dipanggil oleh form komponen Orang 4 dan useTransactionAjax (Fikri).
- * Dinormalisasi sebelum dikirim ke klien, sama seperti createTransactionAction.
- */
 export async function updateTransactionAction(
   input: UpdateTransactionInput,
 ): Promise<ActionResponse<TransactionItem>> {
@@ -93,7 +74,7 @@ export async function updateTransactionAction(
     const userId = await getAuthUser();
     const result = await TransactionService.updateTransaction(userId, input);
     if (!result.success || !('data' in result) || !result.data) {
-      return { success: false, errors: readErrors(result) };
+      return { success: false, errors: readErrors(result, 'Transaksi gagal diubah.') };
     }
     return { success: true, data: serializeTransaction(result.data) };
   } catch (error) {
@@ -103,19 +84,14 @@ export async function updateTransactionAction(
   }
 }
 
-/**
- * Server Action: Menghapus transaksi.
- * Dipanggil oleh tombol Hapus di komponen Orang 4 dan useTransactionAjax (Fikri).
- * Tidak mengembalikan record, jadi tidak ada masalah serialisasi Decimal.
- */
 export async function deleteTransactionAction(
   transactionId: string,
-): Promise<{ success: true; message: string } | { success: false; errors: string[] }> {
+): Promise<ActionStatus> {
   try {
     const userId = await getAuthUser();
     const result = await TransactionService.deleteTransaction(userId, transactionId);
     if (!result.success || !('message' in result) || !result.message) {
-      return { success: false, errors: readErrors(result) };
+      return { success: false, errors: readErrors(result, 'Transaksi gagal dihapus.') };
     }
     return { success: true, message: result.message };
   } catch (error) {
@@ -125,14 +101,6 @@ export async function deleteTransactionAction(
   }
 }
 
-/**
- * Server Action: Mengambil transaksi milik pengguna yang sedang login dengan
- * filter dinamis (jenis, kategori, kata kunci, bulan/tahun).
- * Milik Fikri (TASK_BREAKDOWN §2, SRS-FR-030).
- *
- * `userId` SELALU dari session server, tidak pernah dari `filter` — filter hanya
- * boleh mempersempit, tidak pernah mengganti pemilik data.
- */
 export async function getFilteredTransactionsAction(
   filter: TransactionFilter = {},
 ): Promise<ActionResponse<TransactionItem[]>> {
@@ -146,10 +114,6 @@ export async function getFilteredTransactionsAction(
   }
 }
 
-/**
- * Server Action: Menghitung total saldo, pemasukan, dan pengeluaran.
- * Dipanggil oleh halaman Dashboard Orang 3.
- */
 export async function getFinancialSummaryAction() {
   try {
     const userId = await getAuthUser();

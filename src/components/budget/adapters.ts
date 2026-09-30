@@ -1,79 +1,58 @@
-// Sumber data mock untuk komponen budget (SRS FR-038 s/d FR-044).
-// SATU-SATUNYA tempat komponen menyentuh server. Backend Akbar akan
-// menyediakan src/lib/budget/actions.ts; setelah itu, ganti isi fungsi di bawah
-// dengan pemanggilan server action. Komponen tidak perlu diubah.
+// Satu-satunya jalur data dari komponen budget ke Server Actions.
 
 import type { ActionResponse, BudgetProgress, SetBudgetInput } from "./types";
-
-// ponytail: penyimpanan di memori modul, hilang saat reload. Cukup untuk UI;
-// ganti dengan server action sungguhan saat backend merge.
-
-const mockBudgets = new Map<string, number>();
-
-function key(month: number, year: number): string {
-  return `${year}-${month}`;
-}
-
-const MOCK_LATENCY_MS = 250;
-
-function delay(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, MOCK_LATENCY_MS));
-}
-
-/** Total pengeluaran mock untuk bulan/tahun tertentu. */
-function mockExpense(month: number, year: number): number {
-  // 4.200.000 untuk September 2026 agar ambang 80% bisa diuji manual.
-  if (month === 9 && year === 2026) return 4_200_000;
-  return 1_500_000;
-}
+import {
+  deleteMonthlyBudgetAction,
+  getMonthlyBudgetProgressAction,
+  setMonthlyBudgetAction,
+} from "@/lib/budget/actions";
 
 export async function getBudgetProgress(
   month: number,
   year: number,
 ): Promise<ActionResponse<BudgetProgress>> {
-  await delay();
+  const result = await getMonthlyBudgetProgressAction(month, year);
+  if (!result.success) return result;
 
-  const budgetAmount = mockBudgets.get(key(month, year)) ?? 0;
-  const totalExpense = budgetAmount === 0 ? 0 : mockExpense(month, year);
-  const hasBudget = budgetAmount > 0;
-  const percentageUsed =
-    hasBudget && budgetAmount > 0 ? (totalExpense / budgetAmount) * 100 : 0;
-
+  const progress = result.data;
   return {
     success: true,
-    data: {
-      month,
-      year,
-      budgetAmount,
-      totalExpense,
-      remainingAmount: budgetAmount - totalExpense,
-      percentageUsed,
-      isOverBudget: hasBudget && totalExpense > budgetAmount,
-      hasBudget,
-    },
+    data: progress
+      ? {
+          month,
+          year,
+          budgetAmount: progress.budgetAmount,
+          totalExpense: progress.totalExpense,
+          remainingAmount: progress.remainingBudget,
+          percentageUsed: progress.usagePercentage,
+          isOverBudget: progress.isOverBudget,
+          hasBudget: true,
+        }
+      : {
+          month,
+          year,
+          budgetAmount: 0,
+          totalExpense: 0,
+          remainingAmount: 0,
+          percentageUsed: 0,
+          isOverBudget: false,
+          hasBudget: false,
+        },
   };
 }
 
 export async function saveBudget(
   input: SetBudgetInput,
 ): Promise<ActionResponse<{ id: string }>> {
-  await delay();
-
-  if (!(input.amount > 0)) {
-    return { success: false, errors: ["Nominal anggaran harus lebih besar dari nol."] };
-  }
-  if (input.month < 1 || input.month > 12) {
-    return { success: false, errors: ["Bulan tidak valid."] };
-  }
-
-  mockBudgets.set(key(input.month, input.year), input.amount);
-  return { success: true, data: { id: key(input.month, input.year) } };
+  const result = await setMonthlyBudgetAction(input);
+  return result.success
+    ? { success: true, data: { id: result.data.id } }
+    : result;
 }
 
 export async function deleteBudget(
-  id: string,
+  month: number,
+  year: number,
 ): Promise<ActionResponse<{ id: string }>> {
-  await delay();
-  mockBudgets.delete(id);
-  return { success: true, data: { id } };
+  return deleteMonthlyBudgetAction(month, year);
 }

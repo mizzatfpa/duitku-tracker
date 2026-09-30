@@ -26,7 +26,6 @@ import {
   matchesTransactionFilter,
   normalizeTransactionFilter,
   type ActionResponse,
-  type FilterType,
   type TransactionFilter,
 } from "@/lib/transactions/filter";
 import { toCreateInput, toFormInitial, toUpdateInput } from "./adapters";
@@ -69,11 +68,7 @@ export interface UseTransactionAjaxResult {
   activeFilter: TransactionFilter;
   feedback: TransactionFeedback | null;
 
-  handleFilterChange: (filter: {
-    type: FilterType;
-    category?: string;
-    searchQuery?: string;
-  }) => Promise<void>;
+  handleFilterChange: (filter: Partial<TransactionFilter>) => Promise<void>;
   handleAddTransaction: (data: TransactionFormData) => Promise<TransactionOperationResult>;
   handleUpdateTransaction: (
     id: string,
@@ -198,15 +193,15 @@ export default function useTransactionAjax(
    * state seketika. Tidak ada reload halaman di jalur ini.
    */
   const handleFilterChange = useCallback(
-    async (filter: { type: FilterType; category?: string; searchQuery?: string }) => {
-      const next = normalizeTransactionFilter(filter);
+    async (filter: Partial<TransactionFilter>) => {
+      const next = normalizeTransactionFilter({ ...activeFilter, ...filter });
       // Terapkan filter seketika supaya pill aktif tidak tampak "lag", walau
       // datanya masih di-fetch; indikator loading yang menampilkannya.
       setActiveFilter(next);
       setFeedback(null);
       await fetchList(next);
     },
-    [fetchList],
+    [activeFilter, fetchList],
   );
 
   const refresh = useCallback(async () => {
